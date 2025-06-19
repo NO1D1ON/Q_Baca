@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart'; // Mengganti http dengan dio
-
 import 'package:q_baca/pages/loginPages/register.dart';
 import 'package:q_baca/theme/palette.dart';
-import 'package:q_baca/pages/halamanUtama/homePage.dart';
+import 'package:q_baca/pages/halamanUtama/main_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -64,7 +63,7 @@ class _LoginPageState extends State<LoginPage> {
 
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const HomePage()),
+            MaterialPageRoute(builder: (context) => const MainScreen()),
           );
         }
       }

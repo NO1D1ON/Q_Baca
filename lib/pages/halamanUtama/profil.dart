@@ -10,7 +10,6 @@ class ProfilPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Menyediakan ProfilController ke widget tree di bawahnya.
     return ChangeNotifierProvider(
       create: (_) => ProfilController(),
       child: const ProfilView(),
@@ -23,40 +22,38 @@ class ProfilView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Menggunakan context.watch akan membuat UI ini otomatis rebuild
-    // setiap kali ada perubahan (notifyListeners) di dalam ProfilController.
     final controller = context.watch<ProfilController>();
 
-    // --- PERBAIKAN: Menghapus widget Scaffold yang berlebihan ---
-    // Widget ini sekarang hanya mengembalikan kontennya saja.
-    // Latar belakang dan kerangka utama sudah diatur oleh MainScreen.
-    return SafeArea(
-      child: controller.isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Palette.hijauButton),
-            )
-          : controller.errorMessage != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      controller.errorMessage!,
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: () => controller.fetchUserData(),
-                      child: const Text("Coba Lagi"),
-                    ),
-                  ],
+    return Scaffold(
+      backgroundColor: Palette.colorPrimary,
+      body: SafeArea(
+        child: controller.isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Palette.hijauButton),
+              )
+            : controller.errorMessage != null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        controller.errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: () => controller.fetchUserData(),
+                        child: const Text("Coba Lagi"),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            )
-          : _buildProfileContent(context, controller),
+              )
+            : _buildProfileContent(context, controller),
+      ),
     );
   }
 
@@ -69,14 +66,13 @@ class ProfilView extends StatelessWidget {
         // --- Bagian Header Profil ---
         Container(
           width: double.infinity,
-          color: const Color(0xFFD9EAC6), // Warna hijau zaitun dari gambar
+          color: const Color(0xFFCDE5C1),
           padding: const EdgeInsets.symmetric(vertical: 32.0),
           child: Column(
             children: [
               const CircleAvatar(
                 radius: 50,
                 backgroundColor: Colors.white70,
-                // Anda bisa menggunakan package lain untuk menampilkan avatar dari URL
                 child: Icon(Icons.person, size: 60, color: Palette.hijauButton),
               ),
               const SizedBox(height: 16),
@@ -96,11 +92,8 @@ class ProfilView extends StatelessWidget {
             ],
           ),
         ),
-        const Divider(
-          height: 1,
-          color: Colors.blue,
-          thickness: 2,
-        ), // Garis biru pemisah
+        const Divider(height: 1, color: Colors.blue, thickness: 2),
+
         // --- Bagian Menu List ---
         Expanded(
           child: ListView(
@@ -137,19 +130,11 @@ class ProfilView extends StatelessWidget {
               _buildProfileMenuItem(
                 icon: Icons.logout,
                 text: 'Keluar',
+                // --- PERBAIKAN: Memanggil fungsi logout yang benar ---
                 onTap: () async {
-                  // Panggil fungsi logout dari controller
-                  await controller.logout();
-
-                  // Arahkan ke halaman login dan hapus semua halaman sebelumnya dari tumpukan
-                  if (context.mounted) {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (context) => const LoginPage(),
-                      ),
-                      (route) => false,
-                    );
-                  }
+                  // Panggil fungsi logout dari controller dan kirim context
+                  await controller.logout(context);
+                  // Navigasi tidak lagi diperlukan di sini, karena sudah diurus oleh AuthService
                 },
               ),
             ],

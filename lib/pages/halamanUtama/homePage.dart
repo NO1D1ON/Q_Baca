@@ -4,7 +4,8 @@ import 'package:shimmer/shimmer.dart';
 import 'package:q_baca/theme/palette.dart';
 import 'package:q_baca/models/books.dart';
 import 'package:q_baca/pages/halamanUtama/home_controller.dart';
-import 'package:cached_network_image/cached_network_image.dart'; // <-- TAMBAHKAN IMPORT INI
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:q_baca/logOut/logOut.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -125,7 +126,10 @@ class HomeView extends StatelessWidget {
             size: 28,
           ),
           onPressed: () {
-            /* TODO: Navigasi ke halaman notifikasi API */
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => LogoutPage()),
+            );
           },
         ),
       ],

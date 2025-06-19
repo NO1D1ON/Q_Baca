@@ -1,79 +1,50 @@
 /* ================================================================================
-File DIPERBARUI: lib/api/auth_service.dart
-Tugas: Menjadi pusat logika untuk login, registrasi, dan manajemen token yang andal.
+File BARU atau DIPERBARUI: lib/api/auth_service.dart
+Tugas: Pusat logika login, registrasi, dan sekarang LOGOUT.
 ================================================================================ */
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart'; // Import untuk BuildContext
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
 // Sesuaikan path jika perlu
 import 'package:q_baca/api/api_services.dart';
 import 'package:q_baca/pages/loginPages/login.dart';
-import 'package:q_baca/pages/halamanUtama/kategoriLagi/category.dart';
 
-class AuthService extends ChangeNotifier {
+class AuthService {
   final Dio _dio = Dio();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   // Mengambil baseUrl dari ApiService agar konsisten
   final String _baseUrl = ApiService.baseUrl;
 
-  // Kunci untuk token, dijadikan private untuk enkapsulasi yang lebih baik
+  // Kunci untuk menyimpan token di secure storage
   static const String tokenKey = 'auth_token';
 
-  /// [PERBAIKAN] Fungsi private untuk menyimpan token.
-  /// Setelah menyimpan, ia akan memberi notifikasi ke listener.
+  /// Menyimpan token setelah login atau registrasi berhasil.
   Future<void> _saveToken(String token) async {
     await _storage.write(key: tokenKey, value: token);
-    notifyListeners();
   }
 
-  /// Fungsi publik untuk mendapatkan token jika diperlukan di bagian lain aplikasi.
-  Future<String?> getToken() async {
-    return await _storage.read(key: tokenKey);
-  }
-
-  Future<bool> isLoggedIn() async {
-    final token = await _storage.read(key: tokenKey);
-    return token != null && token.isNotEmpty;
-  }
-
-  /// [GABUNGAN] Fungsi login dari kode asli, disempurnakan untuk menggunakan _saveToken.
+  /// Fungsi untuk login.
   Future<void> login({required String email, required String password}) async {
     try {
       final response = await _dio.post(
         '$_baseUrl/api/login',
         data: {'email': email, 'password': password},
-        options: Options(headers: {'Accept': 'application/json'}),
       );
 
       if (response.statusCode == 200 && response.data['access_token'] != null) {
         await _saveToken(response.data['access_token']);
       } else {
-        throw Exception('Login gagal: Token tidak diterima dari server.');
+        throw Exception('Login gagal: Token tidak diterima.');
       }
     } on DioException catch (e) {
-      // Melempar pesan error dari server agar bisa ditampilkan di UI
       throw Exception(
         e.response?.data['message'] ?? 'Gagal terhubung ke server.',
       );
     }
   }
 
-  Future<List<Category>> fetchCategories() async {
-    try {
-      final response = await _dio.get('/categories');
-      List<Category> categories = (response.data as List)
-          .map((item) => Category.fromJson(item, _baseUrl))
-          .toList();
-      return categories;
-    } on DioException catch (e) {
-      print("Error fetching categories: ${e.message}");
-      return [];
-    }
-  }
-
-  /// [DARI KODE ASLI] Fungsi register dipertahankan sepenuhnya, dengan penyesuaian.
+  /// Fungsi untuk registrasi.
   Future<void> register({
     required String name,
     required String email,
@@ -93,7 +64,6 @@ class AuthService extends ChangeNotifier {
       );
 
       if (response.statusCode == 201 && response.data['access_token'] != null) {
-        // Setelah berhasil register, langsung login dengan menyimpan token.
         await _saveToken(response.data['access_token']);
       } else {
         throw Exception('Registrasi gagal.');
@@ -107,31 +77,29 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// [PERBAIKAN PENTING] Fungsi logout yang disederhanakan dan diperbaiki.
+  /// --- FUNGSI LOGOUT BARU ---
+  /// Menghubungi server untuk logout dan menghapus token lokal.
   Future<void> logout(BuildContext context) async {
-    final token = await getToken();
+    final token = await _storage.read(key: tokenKey);
 
+    // Hanya panggil API logout jika ada token yang tersimpan
     if (token != null) {
       try {
-        // ApiService() akan secara otomatis menambahkan token ke header permintaan ini.
-        // Kita tidak perlu lagi mengatur header secara manual di sini.
+        // ApiService() akan secara otomatis menambahkan token ke header permintaan ini
         await ApiService().dio.post('/logout');
       } catch (e) {
-        // Jika gagal logout di server (misal: koneksi putus atau token sudah tidak valid),
+        // Jika gagal logout di server (misal: token sudah kadaluwarsa),
         // kita tidak perlu khawatir. Cukup cetak pesannya dan lanjutkan.
         print(
-          "Gagal menghubungi API logout, token lokal akan tetap dihapus: $e",
+          "Gagal menghubungi API logout, tapi token lokal akan tetap dihapus: $e",
         );
       }
     }
 
-    // Hapus token dari penyimpanan lokal, apapun yang terjadi di server.
+    // Hapus token dari penyimpanan lokal, apapun yang terjadi di server
     await _storage.delete(key: tokenKey);
-    // Beri notifikasi ke UI bahwa pengguna sudah logout.
-    notifyListeners();
 
-    // Arahkan pengguna kembali ke halaman Login dan hapus semua rute sebelumnya.
-    // Pemeriksaan `context.mounted` adalah praktik keamanan yang baik.
+    // Arahkan pengguna kembali ke halaman login dan hapus semua riwayat halaman
     if (context.mounted) {
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginPage()),

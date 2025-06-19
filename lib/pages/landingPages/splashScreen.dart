@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
+// Ganti dengan path file Anda yang sebenarnya
 import 'package:q_baca/theme/palette.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-
-// import 'onBoardingContents.dart';
-import 'onBoardingScreen.dart';
-import 'package:q_baca/pages/halamanUtama/homePage.dart';
+import 'package:q_baca/api/auth_service.dart';
+import 'package:q_baca/pages/halamanUtama/main_screen.dart';
+import 'package:q_baca/pages/landingPages/onBoardingScreen.dart'; // Asumsi Anda punya file ini
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -16,61 +13,44 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  // PERBAIKAN: Buat instance dari AuthService
+  final AuthService _authService = AuthService();
+
   @override
   void initState() {
     super.initState();
-    checkTokenValid();
+    // Panggil fungsi pengecekan yang sudah diperbaiki
+    _checkLoginStatus();
   }
 
-  Future<void> checkTokenValid() async {
-    await Future.delayed(const Duration(seconds: 2)); //memberi jeda 1 detik
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+  // --- PERBAIKAN UTAMA: Logika pengecekan sekarang menggunakan AuthService ---
+  Future<void> _checkLoginStatus() async {
+    // Memberi jeda 2 detik untuk menampilkan splash screen
+    await Future.delayed(const Duration(seconds: 2));
 
-    if (token == null || token.isEmpty) {
-      // Token tidak ada
-      _redirectToLogin();
-      return;
-    }
+    // Gunakan AuthService untuk memeriksa apakah token ada di FlutterSecureStorage
+    final bool isLoggedIn = await _authService.isLoggedIn();
 
-    try {
-      final response = await http.get(
-        Uri.parse(
-          'https://hobibaca.my.id/api/check-token',
-        ), // ganti sesuai API-mu
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      );
+    if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        final body = json.decode(response.body);
-        if (body['status'] == 'success') {
-          // Token valid
-          _redirectToHome();
-        } else {
-          // Token expired/tidak valid
-          _redirectToLogin();
-        }
-      } else {
-        // Token invalid atau server menolak
-        _redirectToLogin();
-      }
-    } catch (e) {
-      // Error jaringan
-      _redirectToLogin();
+    if (isLoggedIn) {
+      // Jika token ada (sudah login), arahkan ke MainScreen
+      _redirectToHome();
+    } else {
+      // Jika token tidak ada, arahkan ke Onboarding/Login
+      _redirectToOnboarding();
     }
   }
 
   void _redirectToHome() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const HomePage()),
+      // PERBAIKAN: Arahkan ke MainScreen, bukan HomePage
+      MaterialPageRoute(builder: (_) => const MainScreen()),
     );
   }
 
-  void _redirectToLogin() {
+  void _redirectToOnboarding() {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const OnboardingScreen()),
@@ -79,6 +59,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Tampilan UI Anda dipertahankan sepenuhnya
     return Scaffold(
       body: Container(
         color: Palette.colorPrimary,

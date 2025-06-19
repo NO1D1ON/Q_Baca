@@ -19,7 +19,7 @@ class _MainScreenState extends State<MainScreen> {
   // Daftar semua halaman utama yang akan ditampilkan
   final List<Widget> _pages = [
     const HomePage(),
-    const kategori(), // Placeholder
+    const KategoriPage(), // Placeholder
     const koleksi(), // Placeholder
     const ProfilPage(), // Placeholder
   ];

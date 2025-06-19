@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart'; // Mengganti http dengan dio
+import 'package:q_baca/pages/halamanUtama/main_screen.dart'; // Navigasi ke MainScreen setelah login
+// Ganti dengan path file Anda yang sebenarnya
+import 'package:q_baca/api/auth_service.dart'; // <-- PERBAIKAN: Import AuthService
 import 'package:q_baca/pages/loginPages/register.dart';
 import 'package:q_baca/theme/palette.dart';
-import 'package:q_baca/pages/halamanUtama/main_screen.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,86 +15,52 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final Dio _dio = Dio(); // Instansiasi Dio
+
+  // PERBAIKAN: Gunakan instance dari AuthService untuk semua logika autentikasi
+  final AuthService _authService = AuthService();
 
   bool _isLoading = false;
-  String? _errorMessage; // State untuk menyimpan pesan error
+  String? _errorMessage;
 
-  final String _apiBaseUrl = 'http://127.0.0.1:8000/api';
-
+  // --- PERBAIKAN UTAMA: Fungsi _login sekarang memanggil AuthService ---
   Future<void> _login() async {
-    // Hilangkan pesan error sebelumnya saat mencoba login lagi
-    setState(() {
-      _errorMessage = null;
-    });
-
+    // Validasi sederhana di sisi klien
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Email dan sandi tidak boleh kosong.'),
-          backgroundColor: Colors.orangeAccent,
-        ),
-      );
+      setState(() => _errorMessage = 'Email dan sandi tidak boleh kosong.');
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null; // Hapus error lama saat mencoba lagi
     });
 
     try {
-      // Menggunakan Dio untuk request POST
-      final response = await _dio.post(
-        '$_apiBaseUrl/login',
-        data: {
-          'email': _emailController.text,
-          'password': _passwordController.text,
-        },
-        options: Options(headers: {'Accept': 'application/json'}),
+      // Panggil fungsi login dari service terpusat.
+      // AuthService akan menangani panggilan API dan penyimpanan token.
+      await _authService.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
 
-      if (mounted) {
-        if (response.statusCode == 200) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Login berhasil!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+      if (!mounted) return;
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const MainScreen()),
-          );
-        }
-      }
-    } on DioException catch (e) {
-      // Menangani error dari Dio
+      // Jika tidak ada error, token sudah tersimpan. Langsung navigasi ke MainScreen.
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+      );
+    } catch (e) {
+      // Tangani semua jenis error yang dilempar oleh AuthService
       if (mounted) {
-        String errorMessage = 'Terjadi kesalahan pada server.';
-        if (e.response != null) {
-          // Jika ada response error dari server (misal: email/password salah)
-          final errorData = e.response?.data;
-          errorMessage = errorData['message'] ?? 'Email atau sandi salah.';
-        } else {
-          // Error koneksi atau lainnya
-          errorMessage = 'Gagal terhubung ke server. Periksa koneksi Anda.';
-        }
-
         setState(() {
-          _errorMessage = errorMessage;
+          // Menghapus "Exception: " dari pesan error agar lebih bersih
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
         });
       }
-    } catch (e) {
-      // Menangani error tak terduga lainnya
-      setState(() {
-        _errorMessage = 'Terjadi kesalahan yang tidak diketahui.';
-      });
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -107,12 +74,11 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Mengambil ukuran layar untuk responsivitas
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE7F6D9),
+      backgroundColor: Palette.colorPrimary,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -121,10 +87,10 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(height: screenHeight * 0.05),
-                // Gambar yang ukurannya disesuaikan dengan layar
                 Image.asset(
                   'assets/pageIcon/slide1.png',
-                  height: screenHeight * 0.2, // Tinggi responsif
+                  height: screenHeight * 0.2,
+                  fit: BoxFit.contain,
                 ),
                 SizedBox(height: screenHeight * 0.03),
                 Text(
@@ -151,7 +117,10 @@ class _LoginPageState extends State<LoginPage> {
                       },
                       child: const Text(
                         'Daftar',
-                        style: TextStyle(color: Palette.hijauButton),
+                        style: TextStyle(
+                          color: Palette.hijauButton,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -167,49 +136,45 @@ class _LoginPageState extends State<LoginPage> {
                   isPassword: true,
                   controller: _passwordController,
                 ),
-
-                // Baris untuk menampilkan pesan error dan tombol 'Lupa Sandi'
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Tampilkan pesan error jika ada
-                    if (_errorMessage != null)
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 12,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    const Spacer(), // Memberi jarak
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        'Lupa Sandi?',
-                        style: TextStyle(color: Palette.hijauButton),
-                      ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {},
+                    child: const Text(
+                      'Lupa Sandi?',
+                      style: TextStyle(color: Palette.hijauButton),
                     ),
-                  ],
+                  ),
                 ),
+                // PERBAIKAN: Menampilkan pesan error di bawah form
+                if (_errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                    child: Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red, fontSize: 14),
+                    ),
+                  ),
                 const SizedBox(height: 12),
                 _isLoading
-                    ? CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Palette.hijauButton,
-                        ), // Warna loading diubah
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Palette.hijauButton,
+                        ),
                       )
                     : ElevatedButton(
                         onPressed: _login,
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(double.infinity, 50),
                           backgroundColor: Palette.hijauButton,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
                         ),
                         child: const Text(
                           'Masuk',
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
                       ),
                 SizedBox(height: screenHeight * 0.03),
@@ -229,7 +194,7 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 16),
                 SocialButton(
                   icon: Image.asset('assets/pageIcon/facebook.png'),
-                  label: 'Masuk dengan facebook',
+                  label: 'Masuk dengan Facebook',
                   labelColor: Palette.hijauButton,
                   color: Colors.grey.shade200,
                   onTap: () {},
@@ -237,7 +202,7 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 16),
                 SocialButton(
                   icon: Image.asset('assets/pageIcon/google.png'),
-                  label: 'Masuk dengan google',
+                  label: 'Masuk dengan Google',
                   labelColor: Palette.hijauButton,
                   color: Colors.grey.shade200,
                   onTap: () {},
@@ -251,6 +216,9 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+
+// Widget-widget pendukung (CustomInputField, SocialButton) tetap sama
+// dan bisa berada di file yang sama atau dipisah.
 
 class CustomInputField extends StatefulWidget {
   final String label;
@@ -282,22 +250,23 @@ class _CustomInputFieldState extends State<CustomInputField> {
         obscureText: widget.isPassword ? _obscureText : false,
         keyboardType: widget.keyboardType,
         decoration: InputDecoration(
-          labelText: widget.label,
+          hintText: widget.label,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(50.0)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(50.0),
-            borderSide: const BorderSide(color: Palette.hijauButton),
+            borderSide: BorderSide(color: Palette.hijauButton.withOpacity(0.5)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(50.0),
-            borderSide: const BorderSide(color: Colors.blue),
+            borderSide: const BorderSide(color: Palette.hijauButton, width: 2),
           ),
           filled: true,
-          fillColor: Colors.grey[200],
+          fillColor: Colors.white.withOpacity(0.7),
           suffixIcon: widget.isPassword
               ? IconButton(
                   icon: Icon(
                     _obscureText ? Icons.visibility_off : Icons.visibility,
+                    color: Palette.hijauButton,
                   ),
                   onPressed: () {
                     setState(() {
@@ -333,15 +302,23 @@ class SocialButton extends StatelessWidget {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
+        elevation: 1.0,
         backgroundColor: color,
         minimumSize: const Size(double.infinity, 50),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(50.0),
+          side: BorderSide(color: Colors.grey.shade300),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           icon,
           const SizedBox(width: 10),
-          Text(label, style: TextStyle(color: labelColor)),
+          Text(
+            label,
+            style: TextStyle(color: labelColor, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );

@@ -12,10 +12,8 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => HomeController(),
-      child: const HomeView(),
-    );
+    // Langsung kembalikan HomeView. Provider-nya sudah ada di level yang lebih tinggi.
+    return const HomeView();
   }
 }
 
@@ -24,8 +22,14 @@ class HomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // [OPTIMASI] Baris `context.watch` di sini tidak lagi diperlukan
+    // karena kita sudah menggunakan `Consumer` di bawah yang lebih efisien.
+    // final controller = context.watch<HomeController>();
+
     return Container(
       color: Palette.colorPrimary,
+      // `Consumer` adalah cara terbaik untuk listen ke perubahan controller
+      // dan hanya me-rebuild widget yang diperlukan.
       child: Consumer<HomeController>(
         builder: (context, controller, child) {
           if (controller.isLoading) {
@@ -40,6 +44,7 @@ class HomeView extends StatelessWidget {
                   Text(
                     controller.errorMessage!,
                     style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
@@ -67,7 +72,9 @@ class HomeView extends StatelessWidget {
                     const SizedBox(height: 24),
                     _buildSearchBar(context),
                     const SizedBox(height: 24),
-                    _buildCategoryChips(context, controller.categories),
+                    // [KUNCI PENYELESAIAN] Memanggil data yang TEPAT dari controller.
+                    // Widget ini butuh List<String>, dan controller.categoryNames menyediakannya.
+                    _buildCategoryChips(context, controller.categoryNames),
                     const SizedBox(height: 24),
                     BookCarousel(
                       title: 'Paling Banyak Dibaca',
@@ -154,19 +161,19 @@ class HomeView extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryChips(BuildContext context, List<String> categories) {
+  Widget _buildCategoryChips(BuildContext context, List<String> categoryNames) {
     return SizedBox(
       height: 36,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
+        itemCount: categoryNames.length,
         itemBuilder: (context, index) {
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ActionChip(
-              label: Text(categories[index]),
+              label: Text(categoryNames[index]), // Menggunakan daftar nama
               onPressed: () {
-                /* TODO: Implementasi filter per kategori */
+                /* TODO: Implementasi filter */
               },
               backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(

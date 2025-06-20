@@ -1,4 +1,8 @@
+// lib/pages/halamanUtama/main_screen.dart (VERSI FINAL & BENAR)
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:q_baca/pages/halamanUtama/home_controller.dart';
 // Ganti dengan path file Anda yang sebenarnya
 import 'package:q_baca/pages/halamanUtama/homePage.dart';
 import 'package:q_baca/pages/halamanUtama/bottomNavBar.dart';
@@ -16,12 +20,12 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // Daftar semua halaman utama yang akan ditampilkan
+  // [PERBAIKAN #1] Daftar halaman Anda sudah benar. Kita gunakan ini lagi.
   final List<Widget> _pages = [
     const HomePage(),
-    const KategoriPage(), // Placeholder
-    const koleksi(), // Placeholder
-    const ProfilPage(), // Placeholder
+    const KategoriPage(),
+    const koleksi(), // Pastikan nama kelas ini diawali huruf besar: Koleksi()
+    const ProfilPage(),
   ];
 
   void _onNavigate(int index) {
@@ -32,13 +36,18 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Scaffold menyediakan "kanvas" Material Design yang dibutuhkan.
-    return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
-      bottomNavigationBar: CustomBottomNavBar(
-        // Ini adalah widget BottomNavBar Anda
-        currentIndex: _currentIndex,
-        onTap: _onNavigate,
+    // [PERBAIKAN #2] Letakkan Provider di level TERTINGGI dari MainScreen.
+    // Ini akan "menyediakan" satu instance HomeController untuk SEMUA halaman di _pages.
+    return ChangeNotifierProvider(
+      create: (context) => HomeController(),
+      child: Scaffold(
+        // IndexedStack menjaga state setiap halaman agar tidak hilang saat berpindah tab.
+        body: IndexedStack(index: _currentIndex, children: _pages),
+        // [PERBAIKAN #3] Gunakan kembali CustomBottomNavBar Anda yang sudah ada.
+        bottomNavigationBar: CustomBottomNavBar(
+          currentIndex: _currentIndex,
+          onTap: _onNavigate,
+        ),
       ),
     );
   }

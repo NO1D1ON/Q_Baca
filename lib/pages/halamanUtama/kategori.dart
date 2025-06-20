@@ -2,36 +2,25 @@
 
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import 'package:q_baca/pages/halamanUtama/kategoriLagi/category.dart';
-import 'package:q_baca/api/api_services.dart'; // Import service yang baru kita buat
+// import 'package:q_baca/api/api_services.dart'; // Import service yang baru kita buat
 import 'package:q_baca/theme/palette.dart';
 import 'package:q_baca/pages/halamanUtama/kategoriLagi/buku_kategori_sama.dart';
+import 'home_controller.dart';
 
 // Mengubah dari 'kategori' menjadi 'KategoriPage' agar lebih standar
 // dan mengubahnya menjadi StatefulWidget
-class KategoriPage extends StatefulWidget {
+class KategoriPage extends StatelessWidget {
   const KategoriPage({super.key});
 
   @override
-  State<KategoriPage> createState() => _KategoriPageState();
-}
-
-class _KategoriPageState extends State<KategoriPage> {
-  // Future untuk menyimpan hasil pemanggilan API
-  late Future<List<Category>> _categoriesFuture;
-  final ApiService _apiService = ApiService();
-
-  @override
-  void initState() {
-    super.initState();
-    // Memanggil API saat halaman pertama kali dibuka
-    _categoriesFuture = _apiService.fetchCategories();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // [PERBAIKAN #5] Ambil data langsung dari HomeController yang sudah ada.
+    final controller = context.watch<HomeController>();
+
     return Scaffold(
-      backgroundColor: Palette.colorPrimary, // Sesuai dengan tema
+      backgroundColor: Palette.colorPrimary,
       appBar: AppBar(
         title: const Text(
           'Kategori',
@@ -42,68 +31,54 @@ class _KategoriPageState extends State<KategoriPage> {
         ),
         backgroundColor: Palette.colorPrimary,
         elevation: 0,
-        automaticallyImplyLeading: false, // Menghilangkan tombol back
+        automaticallyImplyLeading: false,
       ),
-      body: FutureBuilder<List<Category>>(
-        future: _categoriesFuture,
-        builder: (context, snapshot) {
-          // 1. Saat data sedang dimuat
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Palette.hijauButton),
-            );
-          }
-          // 2. Jika terjadi error
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          // 3. Jika data tidak ditemukan atau kosong
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Tidak ada kategori ditemukan.'));
-          }
-
-          // 4. Jika data berhasil dimuat
-          final allCategories = snapshot.data!;
-
-          // Ambil 5 kategori pertama dari API
-          final apiCategories = allCategories.take(5).toList();
-
-          // Buat kategori "Lainnya" secara manual
-          // Ganti 'imageUrl' dengan URL gambar placeholder yang Anda inginkan
-          final lainnyaCategory = Category(
-            id: 0, // ID 0 atau -1 untuk menandakan ini bukan dari API
-            name: 'Lainnya',
-            imageUrl:
-                'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=500&q=80',
-          );
-
-          // Gabungkan 5 kategori dari API dengan kategori "Lainnya"
-          final displayCategories = [...apiCategories, lainnyaCategory];
-
-          return GridView.builder(
-            padding: const EdgeInsets.all(16.0),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2, // 2 kolom, responsif secara default
-              crossAxisSpacing: 16, // Jarak antar kolom
-              mainAxisSpacing: 16, // Jarak antar baris
-              childAspectRatio: 0.85, // Rasio aspek kartu (lebar / tinggi)
-            ),
-            itemCount: displayCategories.length, // Total 6 item
-            itemBuilder: (context, index) {
-              final category = displayCategories[index];
-              return _buildCategoryCard(context, category);
-            },
-          );
-        },
-      ),
+      // Tidak perlu lagi FutureBuilder, kita langsung tampilkan data dari controller.
+      body: _buildCategoryGrid(context, controller.categoryList),
     );
   }
 
-  // Widget untuk membangun setiap kartu kategori
+  // Memisahkan logika GridView ke dalam fungsi sendiri agar lebih rapi.
+  Widget _buildCategoryGrid(
+    BuildContext context,
+    List<Category> allCategories,
+  ) {
+    if (allCategories.isEmpty) {
+      // Menangani kasus jika kategori belum dimuat atau kosong.
+      // Ini seharusnya tidak terjadi jika pengguna datang dari HomePage, tapi bagus untuk keamanan.
+      return const Center(child: Text('Tidak ada kategori ditemukan.'));
+    }
+
+    // Logika untuk menampilkan 5 kategori + "Lainnya" tetap sama.
+    final apiCategories = allCategories.take(5).toList();
+    final lainnyaCategory = Category(
+      id: 0,
+      name: 'Lainnya',
+      imageUrl:
+          'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=500&q=80',
+    );
+    final displayCategories = [...apiCategories, lainnyaCategory];
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(16.0),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 0.85,
+      ),
+      itemCount: displayCategories.length,
+      itemBuilder: (context, index) {
+        final category = displayCategories[index];
+        return _buildCategoryCard(context, category);
+      },
+    );
+  }
+
+  // Fungsi _buildCategoryCard tidak perlu diubah, sudah benar.
   Widget _buildCategoryCard(BuildContext context, Category category) {
     return GestureDetector(
       onTap: () {
-        // Navigasi ke halaman daftar buku dengan membawa data kategori
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -116,18 +91,15 @@ class _KategoriPageState extends State<KategoriPage> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Gambar Latar
             CachedNetworkImage(
               imageUrl: category.imageUrl,
               fit: BoxFit.cover,
               placeholder: (context, url) => Container(color: Colors.grey[300]),
               errorWidget: (context, url, error) => const Icon(Icons.error),
             ),
-            // Lapisan Gelap (Scrim)
             Container(
               decoration: BoxDecoration(color: Colors.black.withOpacity(0.5)),
             ),
-            // Teks Nama Kategori
             Center(
               child: Text(
                 category.name,

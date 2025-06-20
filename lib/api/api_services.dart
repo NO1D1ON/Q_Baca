@@ -1,13 +1,14 @@
 // lib/api/api_service.dart
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 // Pastikan path ke model-model ini sudah benar
 import 'package:q_baca/models/books.dart';
 import 'package:q_baca/models/users.dart';
-import 'package:q_baca/pages/halamanUtama/kategoriLagi/category.dart'; // [TAMBAHAN] Import model Category
-// import 'package:q_baca/models/transaction.dart'; // [TAMBAHAN] Import model Transaction
+import 'package:q_baca/pages/halamanUtama/kategoriLagi/category.dart'; // Menggunakan model Category yang benar
+// import 'package:q_baca/models/transaction.dart';
 
 import 'package:q_baca/api/auth_service.dart';
 
@@ -15,12 +16,14 @@ class ApiService {
   final Dio dio = Dio();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  // Pastikan URL ini benar
-  static const String baseUrl =
-      'http://127.0.0.1:8000'; // Gunakan 10.0.2.2 untuk emulator Android
+  // Gunakan 'http://10.0.2.2:8000' jika menggunakan Emulator Android.
+  // Ganti sesuai IP Anda jika menjalankan di HP fisik.
+  static const String baseUrl = 'http://127.0.0.1:8000';
 
   ApiService() {
     dio.options.baseUrl = '$baseUrl/api';
+    dio.options.connectTimeout = const Duration(seconds: 15);
+    dio.options.receiveTimeout = const Duration(seconds: 15);
     dio.options.headers['Accept'] = 'application/json';
 
     dio.interceptors.add(
@@ -32,17 +35,44 @@ class ApiService {
           }
           return handler.next(options);
         },
+        onError: (DioException e, handler) {
+          debugPrint('Dio Error: ${e.requestOptions.path} -> ${e.message}');
+          return handler.next(e);
+        },
       ),
     );
   }
 
-  // --- KODE ASLI ANDA (TETAP ADA) ---
+  // Helper untuk parsing yang aman dan bisa digunakan kembali
+  List<T> _parseObjectList<T>({
+    required dynamic responseData, // Terima seluruh data respons
+    required T Function(Map<String, dynamic> json) builder,
+  }) {
+    // Cek jika respons itu sendiri bukan Map, berarti ada error (misal, timeout)
+    if (responseData is! Map) {
+      return []; // Langsung kembalikan list kosong jika respons bukan Map
+    }
+
+    final dynamic data = responseData['data'] ?? responseData;
+
+    if (data == null) return [];
+    if (data is List) {
+      return data.whereType<Map<String, dynamic>>().map(builder).toList();
+    }
+    if (data is Map) {
+      return data.values
+          .whereType<Map<String, dynamic>>()
+          .map(builder)
+          .toList();
+    }
+    return [];
+  }
+
   Future<User> fetchUserProfile() async {
     try {
       final response = await dio.get('/user');
-      // [SARAN] Pastikan model User Anda dapat menangani data dari API,
-      // terutama jika ada data saldo (balance).
-      return User.fromJson(response.data['data']);
+      final userData = response.data['data'] ?? response.data;
+      return User.fromJson(userData as Map<String, dynamic>);
     } on DioException {
       rethrow;
     }
@@ -51,63 +81,44 @@ class ApiService {
   Future<List<Book>> fetchBooks(String endpoint) async {
     try {
       final response = await dio.get('/books/$endpoint');
-      // Pastikan response API untuk buku adalah list di dalam key 'data'
-      List<Book> books = (response.data['data'] as List)
-          .map((item) => Book.fromJson(item, baseUrl))
-          .toList();
-      return books;
+      // [PERBAIKAN] Kirim seluruh `response.data` ke helper
+      return _parseObjectList<Book>(
+        responseData: response.data,
+        builder: (json) => Book.fromJson(json, baseUrl),
+      );
     } on DioException {
-      return [];
+      rethrow;
     }
   }
 
-  // Future<List<String>> fetchCategories() async {
-  //   try {
-  //     final response = await dio.get('/categories');
-  //     // Pastikan response API untuk kategori adalah list di dalam key 'data'
-  //     return List<String>.from(
-  //       response.data['data'].map((item) => item['name']),
-  //     );
-  //   } on DioException {
-  //     return [];
-  //   }
-  // }
-
-  // --- KODE TAMBAHAN DARI SAYA ---
-
-  /// [TAMBAHAN] Mengambil daftar kategori sebagai objek lengkap (bukan hanya nama).
-  /// Ini lebih fleksibel untuk menampilkan gambar dan ID di UI.
   Future<List<Category>> fetchCategories() async {
     try {
       final response = await dio.get('/categories');
-      List<Category> categories = (response.data as List)
-          .map((item) => Category.fromJson(item, baseUrl))
-          .toList();
-      return categories;
-    } on DioException catch (e) {
-      print("Error fetching categories: ${e.message}");
-      return [];
+      // [PERBAIKAN] Kirim seluruh `response.data` ke helper
+      return _parseObjectList<Category>(
+        responseData: response.data,
+        builder: (json) => Category.fromJson(json, baseUrl),
+      );
+    } on DioException {
+      rethrow;
     }
   }
 
-  /// [TAMBAHAN] Mengambil detail satu buku berdasarkan ID.
-  /// Berguna untuk halaman detail buku.
+  /// [FINAL & AMAN] Mengambil detail satu buku
   Future<Book> fetchBookDetails(int bookId) async {
     try {
       final response = await dio.get('/books/$bookId');
-      // Mengasumsikan API mengembalikan data buku tunggal dalam key 'data'
-      return Book.fromJson(response.data['data'], baseUrl);
+      // [PERBAIKAN #2] Menerapkan pola aman yang sama untuk konsistensi
+      final bookData = response.data['data'] ?? response.data;
+      return Book.fromJson(bookData as Map<String, dynamic>, baseUrl);
     } on DioException {
-      rethrow; // Lempar error agar bisa ditangani di UI
+      rethrow;
     }
   }
 
-  /// [TAMBAHAN] Mengirim permintaan untuk membeli buku.
-  /// Ini adalah rute terproteksi, interceptor akan menangani token.
   Future<Map<String, dynamic>> buyBook(int bookId) async {
     try {
       final response = await dio.post('/books/$bookId/buy');
-      // Mengembalikan response dari server (misal: pesan sukses)
       return {
         'success': true,
         'message': response.data['message'] ?? 'Pembelian berhasil',
@@ -120,8 +131,6 @@ class ApiService {
     }
   }
 
-  /// [TAMBAHAN] Mengirim permintaan top-up saldo.
-  /// Pastikan endpoint '/topup' ada di API Anda.
   Future<Map<String, dynamic>> requestTopUp(double amount) async {
     try {
       final response = await dio.post('/topup', data: {'amount': amount});
@@ -137,18 +146,4 @@ class ApiService {
       };
     }
   }
-
-  //   /// [TAMBAHAN] Mengambil riwayat transaksi pengguna.
-  //   /// Pastikan endpoint '/transactions' ada di API Anda.
-  //   Future<List<Transaction>> fetchTransactionHistory() async {
-  //     try {
-  //       final response = await dio.get('/transactions');
-  //       // Mengasumsikan response dari API adalah: { "data": [ { ...transaksi... }, ... ] }
-  //       final List<dynamic> historyJson = response.data['data'];
-  //       return historyJson.map((json) => Transaction.fromJson(json)).toList();
-  //     } on DioException {
-  //       return [];
-  //     }
-  //   }
-  // }
 }

@@ -1,15 +1,14 @@
 /* ================================================================================
-File DIPERBARUI: lib/api/auth_service.dart
+File FINAL: lib/api/auth_service.dart
 Tugas: Menjadi pusat logika untuk login, registrasi, dan manajemen token yang andal.
 ================================================================================ */
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart'; // Import untuk BuildContext
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 // Sesuaikan path jika perlu
 import 'package:q_baca/api/api_services.dart';
 import 'package:q_baca/pages/loginPages/login.dart';
-import 'package:q_baca/pages/halamanUtama/kategoriLagi/category.dart';
 
 class AuthService extends ChangeNotifier {
   final Dio _dio = Dio();
@@ -33,12 +32,13 @@ class AuthService extends ChangeNotifier {
     return await _storage.read(key: tokenKey);
   }
 
+  /// Mengecek apakah pengguna sudah login berdasarkan keberadaan token.
   Future<bool> isLoggedIn() async {
     final token = await _storage.read(key: tokenKey);
     return token != null && token.isNotEmpty;
   }
 
-  /// [GABUNGAN] Fungsi login dari kode asli, disempurnakan untuk menggunakan _saveToken.
+  /// Fungsi login yang sudah disempurnakan.
   Future<void> login({required String email, required String password}) async {
     try {
       final response = await _dio.post(
@@ -60,20 +60,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<List<Category>> fetchCategories() async {
-    try {
-      final response = await _dio.get('/categories');
-      List<Category> categories = (response.data as List)
-          .map((item) => Category.fromJson(item, _baseUrl))
-          .toList();
-      return categories;
-    } on DioException catch (e) {
-      print("Error fetching categories: ${e.message}");
-      return [];
-    }
-  }
-
-  /// [DARI KODE ASLI] Fungsi register dipertahankan sepenuhnya, dengan penyesuaian.
+  /// Fungsi register yang sudah disempurnakan.
   Future<void> register({
     required String name,
     required String email,
@@ -101,25 +88,31 @@ class AuthService extends ChangeNotifier {
     } on DioException catch (e) {
       final errors = e.response?.data['errors'];
       if (errors != null && errors is Map && errors.isNotEmpty) {
+        // Ambil pesan error validasi pertama dari Laravel
         throw Exception(errors.values.first[0]);
       }
       throw Exception(e.response?.data['message'] ?? 'Gagal mendaftar.');
     }
   }
 
-  /// [PERBAIKAN PENTING] Fungsi logout yang disederhanakan dan diperbaiki.
+  /// --- DIHAPUS ---
+  /// Fungsi fetchCategories() telah dihapus dari AuthService.
+  /// Pengambilan data kategori sekarang HANYA dilakukan melalui ApiService
+  /// yang sudah kita buat aman dan terpusat. Ini menghilangkan duplikasi
+  /// dan potensi error yang sama di masa depan.
+
+  /// Fungsi logout yang disederhanakan dan diperbaiki.
   Future<void> logout(BuildContext context) async {
     final token = await getToken();
 
     if (token != null) {
       try {
         // ApiService() akan secara otomatis menambahkan token ke header permintaan ini.
-        // Kita tidak perlu lagi mengatur header secara manual di sini.
         await ApiService().dio.post('/logout');
       } catch (e) {
         // Jika gagal logout di server (misal: koneksi putus atau token sudah tidak valid),
         // kita tidak perlu khawatir. Cukup cetak pesannya dan lanjutkan.
-        print(
+        debugPrint(
           "Gagal menghubungi API logout, token lokal akan tetap dihapus: $e",
         );
       }

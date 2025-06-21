@@ -1,9 +1,14 @@
-// FIX 1: 'hide Category' ditambahkan untuk menghindari konflik nama dengan class Category dari Flutter.
-import 'package:flutter/foundation.dart' hide Category;
+// lib/pages/halamanUtama/home_controller.dart (VERSI FINAL)
+
+import 'package:flutter/foundation.dart'
+    hide Category; // hide Category tidak diperlukan jika import model benar
 import 'package:q_baca/api/api_services.dart';
 import 'package:q_baca/models/books.dart';
+import 'package:q_baca/models/notification_model.dart';
 import 'package:q_baca/models/users.dart';
+// [PERBAIKAN #1] Import model Category yang benar.
 import 'package:q_baca/pages/halamanUtama/kategoriLagi/category.dart';
+import 'package:q_baca/models/search_result.dart';
 
 class HomeController extends ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -15,24 +20,29 @@ class HomeController extends ChangeNotifier {
   List<Book> _recommendedBooks = [];
   List<Book> _trendingBooks = [];
   List<Category> _categories = [];
+  List<NotificationModel> _notifications = [];
+  bool _hasUnreadNotifications = false;
   String? _errorMessage;
+  bool _isSearching = false;
+  SearchResult? _searchResult;
+  String? _searchError;
 
-  // Getters untuk diakses oleh UI
+  // ... (semua getter Anda sudah benar)
   bool get isLoading => _isLoading;
   String get greetingName => _user?.firstName ?? 'Pembaca';
   List<Book> get popularBooks => _popularBooks;
   List<Book> get newBooks => _newBooks;
   List<Book> get recommendedBooks => _recommendedBooks;
   List<Book> get trendingBooks => _trendingBooks;
-  String? get errorMessage => _errorMessage;
-
-  // [KONFIRMASI] Desain ini sudah SANGAT BAIK.
-  // Menyediakan dua jenis data kategori untuk kebutuhan UI yang berbeda.
-  /// Mengembalikan HANYA NAMA kategori untuk widget sederhana seperti chips.
   List<String> get categoryNames => _categories.map((c) => c.name).toList();
-
-  /// Mengembalikan OBJEK LENGKAP kategori untuk halaman Kategori yang lebih detail.
   List<Category> get categoryList => _categories;
+  List<NotificationModel> get notifications => _notifications;
+  bool get hasUnreadNotifications => _hasUnreadNotifications;
+  String? get errorMessage => _errorMessage;
+  bool get isSearching => _isSearching;
+  SearchResult? get searchResult => _searchResult;
+  String? get searchError => _searchError;
+  User? get user => _user;
 
   HomeController() {
     fetchHomePageData();
@@ -44,42 +54,67 @@ class HomeController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Mengambil data user secara terpisah agar tidak memblokir UI utama jika gagal.
+      // Panggil profil user secara terpisah
       try {
         _user = await _apiService.fetchUserProfile();
       } catch (e) {
-        debugPrint(
-          "Info: Gagal mengambil profil user (mungkin belum login). Error: $e",
-        );
+        debugPrint("Info: Gagal mengambil profil user. Error: $e");
         _user = null;
       }
 
-      // Menjalankan semua panggilan API untuk konten utama secara bersamaan.
+      // [SINKRONISASI] Panggil 6 API di sini
       final publicDataResults = await Future.wait([
-        _apiService.fetchBooks('popular'),
-        _apiService.fetchBooks('recommendations'),
-        _apiService.fetchBooks('new'),
-        _apiService.fetchBooks('trending'),
-        _apiService.fetchCategories(),
+        _apiService.fetchBooks('popular'), // Indeks 0
+        _apiService.fetchBooks('recommendations'), // Indeks 1
+        _apiService.fetchBooks('new'), // Indeks 2
+        _apiService.fetchBooks('trending'), // Indeks 3
+        _apiService.fetchCategories(), // Indeks 4
+        _apiService.fetchNotifications(), // Indeks 5
       ]);
 
-      // Mengisi data dari hasil panggilan API.
-      // Casting ini aman karena sudah berada di dalam blok try-catch.
+      // [SINKRONISASI] Ambil 6 hasil sesuai indeksnya
       _popularBooks = publicDataResults[0] as List<Book>;
       _recommendedBooks = publicDataResults[1] as List<Book>;
       _newBooks = publicDataResults[2] as List<Book>;
       _trendingBooks = publicDataResults[3] as List<Book>;
-      _categories = publicDataResults[4] as List<Category>; // Ini sudah benar.
+      _categories = publicDataResults[4] as List<Category>;
+      // [PERBAIKAN #2] Gunakan indeks yang benar (5) untuk notifikasi
+      _notifications = publicDataResults[5] as List<NotificationModel>;
+
+      _hasUnreadNotifications = _notifications.any((notif) => !notif.isRead);
     } catch (e, stackTrace) {
-      // [PERBAIKAN #2] Menambahkan 'stackTrace' untuk debug yang lebih baik.
       _errorMessage = "Gagal memuat data. Silakan coba lagi nanti.";
-      // Mencetak error yang lebih detail ke konsol untuk developer.
       debugPrint("--- Error fatal di HomeController ---");
       debugPrint("Pesan: $e");
       debugPrint("Stack Trace: $stackTrace");
-      debugPrint("-----------------------------------");
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void markNotificationsAsRead() {
+    if (_hasUnreadNotifications) {
+      _hasUnreadNotifications = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> performSearch(String query) async {
+    // Jika query kosong, tidak melakukan apa-apa
+    if (query.trim().isEmpty) return;
+
+    _isSearching = true;
+    _searchError = null;
+    notifyListeners();
+
+    try {
+      _searchResult = await _apiService.search(query);
+    } catch (e) {
+      _searchError = "Gagal melakukan pencarian.";
+      _searchResult = null;
+    } finally {
+      _isSearching = false;
       notifyListeners();
     }
   }

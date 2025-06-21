@@ -6,11 +6,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 // Pastikan path ke model-model ini sudah benar
 import 'package:q_baca/models/books.dart';
+import 'package:q_baca/models/notification_model.dart';
 import 'package:q_baca/models/users.dart';
 import 'package:q_baca/pages/halamanUtama/kategoriLagi/category.dart'; // Menggunakan model Category yang benar
 // import 'package:q_baca/models/transaction.dart';
 
 import 'package:q_baca/api/auth_service.dart';
+import 'package:q_baca/models/search_result.dart';
 
 class ApiService {
   final Dio dio = Dio();
@@ -144,6 +146,92 @@ class ApiService {
         'success': false,
         'message': e.response?.data['message'] ?? 'Permintaan top-up gagal',
       };
+    }
+  }
+
+  Future<List<NotificationModel>> fetchNotifications() async {
+    try {
+      final response = await dio.get('/notifications');
+      final notificationData = response.data['data'] ?? response.data;
+
+      // Gunakan helper yang sudah kita buat sebelumnya
+      return _parseObjectList<NotificationModel>(
+        responseData: notificationData,
+        builder: (json) => NotificationModel.fromJson(json),
+      );
+    } on DioException {
+      // Jika gagal, kembalikan list kosong agar tidak crash.
+      return [];
+    }
+  }
+
+  Future<SearchResult> search(String query) async {
+    try {
+      final response = await dio.get('/search', queryParameters: {'q': query});
+      // Asumsikan respons selalu terbungkus 'data'
+      return SearchResult.fromJson(response.data['data'], baseUrl);
+    } on DioException {
+      rethrow;
+    }
+  }
+
+  Future<List<Book>> fetchBooksByCategory(int categoryId) async {
+    try {
+      final response = await dio.get('/categories/$categoryId/books');
+      final bookData = response.data['data'] ?? response.data;
+      return _parseObjectList<Book>(
+        responseData: bookData,
+        builder: (json) => Book.fromJson(json, baseUrl),
+      );
+    } on DioException {
+      rethrow;
+    }
+  }
+
+  Future<List<Book>> fetchMyBooks() async {
+    try {
+      final response = await dio.get('/my-books');
+      return _parseObjectList<Book>(
+        responseData: response.data,
+        builder: (json) => Book.fromJson(json, baseUrl),
+      );
+    } on DioException {
+      return []; // Kembalikan list kosong jika error
+    }
+  }
+
+  /// [TAMBAHAN] Mengambil daftar buku yang difavoritkan
+  Future<List<Book>> fetchMyFavorites() async {
+    try {
+      final response = await dio.get('/my-favorites');
+      return _parseObjectList<Book>(
+        responseData: response.data,
+        builder: (json) => Book.fromJson(json, baseUrl),
+      );
+    } on DioException {
+      return [];
+    }
+  }
+
+  /// [TAMBAHAN] Meminta tautan reset password.
+  Future<String> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String newPasswordConfirmation,
+  }) async {
+    try {
+      final response = await dio.post(
+        '/change-password',
+        data: {
+          'old_password': oldPassword,
+          'new_password': newPassword,
+          'new_password_confirmation': newPasswordConfirmation,
+        },
+      );
+      return response.data['message'] ?? 'Password berhasil diubah.';
+    } on DioException catch (e) {
+      // Lempar pesan error dari server agar bisa ditampilkan
+      throw e.response?.data['message'] ?? 'Terjadi kesalahan.';
     }
   }
 }

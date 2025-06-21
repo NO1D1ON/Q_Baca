@@ -61,6 +61,8 @@ dependencies:
 
   flutter_secure_storage: ^9.2.4
 
+  timeago: ^3.7.1
+
   
 
 dev_dependencies:

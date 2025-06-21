@@ -89,7 +89,7 @@ class _LoginPageState extends State<LoginPage> {
                 SizedBox(height: screenHeight * 0.05),
                 Image.asset(
                   'assets/pageIcon/slide1.png',
-                  height: screenHeight * 0.2,
+                  height: screenHeight * 0.14,
                   fit: BoxFit.contain,
                 ),
                 SizedBox(height: screenHeight * 0.03),

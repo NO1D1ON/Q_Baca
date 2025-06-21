@@ -1,155 +1,219 @@
+// lib/pages/halamanUtama/profil.dart (VERSI FINAL & SELARAS)
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// Ganti dengan path yang benar
-import 'package:q_baca/pages/loginPages/login.dart';
+import 'package:q_baca/api/auth_service.dart';
+import 'package:q_baca/controllers/topUp_controller.dart';
+import 'package:q_baca/models/users.dart';
+import 'package:q_baca/pages/halamanUtama/home_controller.dart'; // <-- Gunakan HomeController
+import 'package:q_baca/pages/halamanUtama/account_page.dart'; // <-- Import halaman baru
 import 'package:q_baca/theme/palette.dart';
-import 'package:q_baca/pages/halamanUtama/profil/profil_controller.dart';
+import 'package:intl/intl.dart';
 
 class ProfilPage extends StatelessWidget {
   const ProfilPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ProfilController(),
-      child: const ProfilView(),
-    );
-  }
-}
+    // [PERBAIKAN #1] Langsung 'listen' ke HomeController yang sudah disediakan oleh MainScreen
+    final controller = context.watch<HomeController>();
+    final user = controller.user; // Ambil data user dari HomeController
 
-class ProfilView extends StatelessWidget {
-  const ProfilView({super.key});
+    // Jika karena suatu hal controller masih loading atau user belum login
+    if (controller.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<ProfilController>();
+    if (user == null) {
+      return const Center(child: Text("Silakan login untuk melihat profil."));
+    }
 
+    // Jika data sudah ada, bangun UI-nya
     return Scaffold(
       backgroundColor: Palette.colorPrimary,
       body: SafeArea(
-        child: controller.isLoading
-            ? const Center(
-                child: CircularProgressIndicator(color: Palette.hijauButton),
-              )
-            : controller.errorMessage != null
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        controller.errorMessage!,
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 10),
-                      ElevatedButton(
-                        onPressed: () => controller.fetchUserData(),
-                        child: const Text("Coba Lagi"),
-                      ),
-                    ],
+        child: Column(
+          children: [
+            // --- Bagian Header Profil ---
+            _buildProfileHeader(user),
+
+            const Divider(height: 1, color: Colors.grey, thickness: 1),
+
+            // --- Bagian Menu List ---
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.only(top: 8.0),
+                children: [
+                  _buildProfileMenuItem(
+                    context: context,
+                    icon: Icons.person_outline,
+                    text: 'Akun',
+                    onTap: () {
+                      // [PERBAIKAN #2] Navigasi ke halaman akun baru
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AccountPage(user: user),
+                        ),
+                      );
+                    },
                   ),
-                ),
-              )
-            : _buildProfileContent(context, controller),
+                  _buildProfileMenuItem(
+                    context: context,
+                    icon:
+                        Icons.account_balance_wallet_outlined, // <-- IKON BARU
+                    text: 'Top Up Saldo',
+                    onTap: () {
+                      // [PERBAIKAN] Panggil fungsi untuk menampilkan dialog
+                      _showTopUpDialog(context);
+                    },
+                  ),
+                  _buildProfileMenuItem(
+                    context: context,
+                    icon: Icons.history,
+                    text: 'Riwayat Transaksi',
+                    onTap: () {
+                      /* TODO: Navigasi ke halaman riwayat transaksi */
+                    },
+                  ),
+                  _buildProfileMenuItem(
+                    context: context,
+                    icon: Icons.headset_mic_outlined,
+                    text: 'Bantuan',
+                    onTap: () {
+                      /* TODO: Navigasi ke halaman bantuan */
+                    },
+                  ),
+                  _buildProfileMenuItem(
+                    context: context,
+                    icon: Icons.logout,
+                    text: 'Keluar',
+                    isLogout: true, // Tandai sebagai tombol logout
+                    onTap: () => _showLogoutDialog(context),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildProfileContent(
-    BuildContext context,
-    ProfilController controller,
-  ) {
-    return Column(
-      children: [
-        // --- Bagian Header Profil ---
-        Container(
-          width: double.infinity,
-          color: const Color(0xFFCDE5C1),
-          padding: const EdgeInsets.symmetric(vertical: 32.0),
-          child: Column(
-            children: [
-              const CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.white70,
-                child: Icon(Icons.person, size: 60, color: Palette.hijauButton),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                controller.user?.name ?? 'Nama Pengguna',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Palette.hijauButton,
+  void _showTopUpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User harus menekan tombol
+      builder: (BuildContext dialogContext) {
+        // Sediakan TopUpController khusus untuk dialog ini
+        return ChangeNotifierProvider(
+          create: (_) => TopUpController(),
+          child: Consumer<TopUpController>(
+            builder: (context, controller, child) {
+              return AlertDialog(
+                title: const Text('Top Up Saldo'),
+                content: TextField(
+                  controller: controller.amountController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Jumlah Top Up',
+                    prefixText: 'Rp ',
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                controller.user?.email ?? 'email@contoh.com',
-                style: const TextStyle(fontSize: 14, color: Colors.black54),
-              ),
-            ],
+                actions: controller.isLoading
+                    ? [const Center(child: CircularProgressIndicator())]
+                    : [
+                        TextButton(
+                          child: const Text('Batal'),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                        FilledButton(
+                          child: const Text('Kirim'),
+                          onPressed: () => controller.submitTopUp(context),
+                        ),
+                      ],
+              );
+            },
           ),
-        ),
-        const Divider(height: 1, color: Colors.blue, thickness: 2),
-
-        // --- Bagian Menu List ---
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.only(top: 8.0),
-            children: [
-              _buildProfileMenuItem(
-                icon: Icons.person_outline,
-                text: 'Akun',
-                onTap: () {
-                  /* TODO: Navigasi ke halaman edit akun */
-                },
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.lock_outline,
-                text: 'Ubah Kata Sandi',
-                onTap: () {
-                  /* TODO: Navigasi ke halaman ubah kata sandi */
-                },
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.headset_mic_outlined,
-                text: 'Bantuan',
-                onTap: () {
-                  /* TODO: Navigasi ke halaman bantuan */
-                },
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.receipt_long_outlined,
-                text: 'Transaksi',
-                onTap: () {
-                  /* TODO: Navigasi ke halaman riwayat transaksi */
-                },
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.logout,
-                text: 'Keluar',
-                // --- PERBAIKAN: Memanggil fungsi logout yang benar ---
-                onTap: () async {
-                  // Panggil fungsi logout dari controller dan kirim context
-                  await controller.logout(context);
-                  // Navigasi tidak lagi diperlukan di sini, karena sudah diurus oleh AuthService
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
-  // Widget helper untuk membuat setiap item menu
+  // Widget helper dipisahkan agar lebih rapi
+  // Widget _buildProfileHeader(User user) {
+  //   return Container(
+  //     width: double.infinity,
+  //     padding: const EdgeInsets.symmetric(vertical: 32.0),
+  //     child: Column(
+  //       children: [
+  //         const CircleAvatar(
+  //           radius: 50,
+  //           backgroundColor: Colors.white70,
+  //           child: Icon(Icons.person, size: 60, color: Palette.hijauButton),
+  //         ),
+  //         const SizedBox(height: 16),
+  //         Text(
+  //           user.name,
+  //           style: const TextStyle(
+  //             fontSize: 22,
+  //             fontWeight: FontWeight.bold,
+  //             color: Palette.hijauButton,
+  //           ),
+  //         ),
+  //         const SizedBox(height: 4),
+  //         Text(
+  //           user.email,
+  //           style: const TextStyle(fontSize: 14, color: Colors.black54),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+
+  Widget _buildProfileHeader(User user) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 70.0, horizontal: 16.0),
+      child: Column(
+        children: [
+          const CircleAvatar(
+            radius: 50,
+            backgroundColor: Colors.white70,
+            child: Icon(Icons.person, size: 60, color: Palette.hijauButton),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            user.name,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Palette.hijauButton,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            user.email,
+            style: const TextStyle(fontSize: 14, color: Colors.black54),
+          ),
+          const SizedBox(height: 16), // Jarak sebelum saldo
+          // Panggil widget saldo yang baru kita buat
+          _SaldoWidget(saldo: user.saldo),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProfileMenuItem({
+    required BuildContext context,
     required IconData icon,
     required String text,
     required VoidCallback onTap,
+    bool isLogout = false,
   }) {
+    final color = isLogout ? Colors.red : Palette.hijauButton;
+    final textColor = isLogout ? Colors.red : Colors.black;
+
     return Column(
       children: [
         ListTile(
@@ -157,17 +221,122 @@ class ProfilView extends StatelessWidget {
             horizontal: 24.0,
             vertical: 4.0,
           ),
-          leading: Icon(icon, color: Palette.hijauButton),
-          title: Text(text, style: const TextStyle(fontSize: 16)),
-          trailing: const Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-            color: Colors.grey,
-          ),
+          leading: Icon(icon, color: color),
+          title: Text(text, style: TextStyle(fontSize: 16, color: textColor)),
+          trailing: isLogout
+              ? null
+              : const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.grey,
+                ),
           onTap: onTap,
         ),
         const Divider(height: 1, indent: 24, endIndent: 24),
       ],
+    );
+  }
+
+  // Fungsi untuk menampilkan dialog konfirmasi logout
+  Future<void> _showLogoutDialog(BuildContext context) async {
+    final bool? shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Konfirmasi Keluar'),
+          content: const Text('Apakah Anda yakin ingin keluar dari akun Anda?'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Batal'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: const Text('Keluar'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      // Gunakan context.read untuk memanggil fungsi dari provider
+      // karena kita berada di dalam async gap
+      if (context.mounted) {
+        // Asumsi AuthService disediakan secara global atau di-instance di sini
+        await AuthService().logout(context);
+      }
+    }
+  }
+}
+
+class _SaldoWidget extends StatefulWidget {
+  final double saldo;
+  const _SaldoWidget({required this.saldo});
+
+  @override
+  State<_SaldoWidget> createState() => _SaldoWidgetState();
+}
+
+class _SaldoWidgetState extends State<_SaldoWidget> {
+  bool _isSaldoVisible = false;
+
+  void _toggleVisibility() {
+    setState(() {
+      _isSaldoVisible = !_isSaldoVisible;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'id',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+
+    // Tampilan saldo yang bisa diklik
+    return InkWell(
+      onTap: _toggleVisibility,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        decoration: BoxDecoration(
+          color: Palette.colorPrimary,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min, // Agar ukuran row pas dengan konten
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  'Saldo Anda',
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _isSaldoVisible
+                      ? currencyFormatter.format(widget.saldo)
+                      : 'Rp •••••••',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Palette.hijauButton,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            Icon(
+              _isSaldoVisible ? Icons.visibility_off : Icons.visibility,
+              color: Colors.grey[600],
+              size: 20,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

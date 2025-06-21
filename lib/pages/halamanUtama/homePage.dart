@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:q_baca/pages/halamanUtama/book_detail_page.dart';
+import 'package:q_baca/pages/halamanUtama/kategoriLagi/buku_kategori_sama.dart';
+import 'package:q_baca/pages/halamanUtama/kategoriLagi/category.dart';
+import 'package:q_baca/pages/halamanUtama/notification_homepage.dart';
+import 'package:q_baca/pages/halamanUtama/search_result_dialog.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:q_baca/theme/palette.dart';
 import 'package:q_baca/models/books.dart';
 import 'package:q_baca/pages/halamanUtama/home_controller.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:q_baca/logOut/logOut.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Langsung kembalikan HomeView. Provider-nya sudah ada di level yang lebih tinggi.
-    return const HomeView();
+    // [PERBAIKAN UTAMA] Kembalikan ChangeNotifierProvider ke sini.
+    // Ini memastikan HomeView dan semua widget di bawahnya bisa menemukan HomeController.
+    return ChangeNotifierProvider(
+      create: (context) => HomeController(),
+      child: const HomeView(),
+    );
   }
 }
 
@@ -22,14 +30,8 @@ class HomeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // [OPTIMASI] Baris `context.watch` di sini tidak lagi diperlukan
-    // karena kita sudah menggunakan `Consumer` di bawah yang lebih efisien.
-    // final controller = context.watch<HomeController>();
-
     return Container(
       color: Palette.colorPrimary,
-      // `Consumer` adalah cara terbaik untuk listen ke perubahan controller
-      // dan hanya me-rebuild widget yang diperlukan.
       child: Consumer<HomeController>(
         builder: (context, controller, child) {
           if (controller.isLoading) {
@@ -68,13 +70,12 @@ class HomeView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(context, controller.greetingName),
+                    // [PERBAIKAN #1] Kirim seluruh objek 'controller' ke _buildHeader
+                    _buildHeader(context, controller),
                     const SizedBox(height: 24),
                     _buildSearchBar(context),
                     const SizedBox(height: 24),
-                    // [KUNCI PENYELESAIAN] Memanggil data yang TEPAT dari controller.
-                    // Widget ini butuh List<String>, dan controller.categoryNames menyediakannya.
-                    _buildCategoryChips(context, controller.categoryNames),
+                    // _buildCategoryChips(context, controller.categoryNames),
                     const SizedBox(height: 24),
                     BookCarousel(
                       title: 'Paling Banyak Dibaca',
@@ -105,15 +106,17 @@ class HomeView extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String name) {
+  // [PERBAIKAN #2] Ubah parameter kedua dari 'String name' menjadi 'HomeController controller'
+  Widget _buildHeader(BuildContext context, HomeController controller) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // [PERBAIKAN #3] Ambil nama dari controller.greetingName
             Text(
-              "Halo, $name",
+              "Halo, ${controller.greetingName}",
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -126,6 +129,16 @@ class HomeView extends StatelessWidget {
             ),
           ],
         ),
+        // [PERBAIKAN #4] Panggilan ini sekarang valid karena 'controller' sudah dikenal
+        _buildNotificationButton(context, controller.hasUnreadNotifications),
+      ],
+    );
+  }
+
+  // Widget ini sudah benar, tidak perlu diubah
+  Widget _buildNotificationButton(BuildContext context, bool hasUnread) {
+    return Stack(
+      children: <Widget>[
         IconButton(
           icon: const Icon(
             Icons.notifications_outlined,
@@ -133,12 +146,30 @@ class HomeView extends StatelessWidget {
             size: 28,
           ),
           onPressed: () {
+            // Ambil controller menggunakan context.read (karena kita tidak me-rebuild)
+            // Tandai notifikasi sebagai sudah dibaca di UI
+            context.read<HomeController>().markNotificationsAsRead();
+
+            // Arahkan ke halaman notifikasi
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => LogoutPage()),
+              MaterialPageRoute(builder: (context) => const NotificationPage()),
             );
           },
         ),
+        if (hasUnread)
+          Positioned(
+            right: 8,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              constraints: const BoxConstraints(minWidth: 12, minHeight: 12),
+            ),
+          ),
       ],
     );
   }
@@ -150,39 +181,37 @@ class HomeView extends StatelessWidget {
         hintText: 'Cari judul, penulis, atau kategori...',
         filled: true,
         fillColor: Colors.white,
-        border: OutlineInputBorder(
+        enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: Colors.grey),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Palette.hijauButton, width: 2),
         ),
       ),
-      onSubmitted: (query) {
-        /* TODO: Implementasi pencarian API */
-      },
-    );
-  }
 
-  Widget _buildCategoryChips(BuildContext context, List<String> categoryNames) {
-    return SizedBox(
-      height: 36,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: categoryNames.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ActionChip(
-              label: Text(categoryNames[index]), // Menggunakan daftar nama
-              onPressed: () {
-                /* TODO: Implementasi filter */
-              },
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
+      onSubmitted: (query) {
+        if (query.trim().isNotEmpty) {
+          // Ambil instance HomeController yang sudah ada menggunakan context.read.
+          // Kita gunakan `read` karena kita hanya memanggil fungsi, tidak perlu me-rebuild widget ini.
+          final homeController = context.read<HomeController>();
+          homeController.performSearch(query);
+
+          // Tampilkan dialog
+          showDialog(
+            context: context,
+            builder: (dialogContext) {
+              // [KUNCI SOLUSI] Bungkus dialog dengan ChangeNotifierProvider.value
+              // untuk "meminjamkan" controller yang sudah ada ke dialog.
+              return ChangeNotifierProvider.value(
+                value: homeController,
+                child: const SearchResultDialog(),
+              );
+            },
           );
-        },
-      ),
+        }
+      },
     );
   }
 }
@@ -209,13 +238,13 @@ class BookCarousel extends StatelessWidget {
                 color: Palette.hijauButton,
               ),
             ),
-            TextButton(
-              onPressed: () {},
-              child: const Text(
-                "Lihat Semua",
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
+            // TextButton(
+            //   onPressed: () {},
+            //   child: const Text(
+            //     "Lihat Semua",
+            //     style: TextStyle(color: Colors.grey),
+            //   ),
+            // ),
           ],
         ),
         const SizedBox(height: 8),
@@ -301,7 +330,12 @@ class BookCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        print('Tapped on book: ${book.title}');
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BookDetailPage(bookId: book.id),
+          ),
+        );
       },
       child: Padding(
         padding: const EdgeInsets.only(right: 16),

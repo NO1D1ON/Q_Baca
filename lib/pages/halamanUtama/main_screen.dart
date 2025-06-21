@@ -24,7 +24,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
     const HomePage(),
     const KategoriPage(),
-    const koleksi(), // Pastikan nama kelas ini diawali huruf besar: Koleksi()
+    const KoleksiPage(), // Pastikan nama kelas ini diawali huruf besar: Koleksi()
     const ProfilPage(),
   ];
 

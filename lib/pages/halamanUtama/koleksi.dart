@@ -1,145 +1,174 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-// Ganti dengan path yang benar
-import 'package:q_baca/pages/loginPages/login.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:q_baca/controllers/koleksi_controller.dart';
+import 'package:q_baca/models/books.dart';
+import 'package:q_baca/pages/halamanUtama/book_detail_page.dart';
 import 'package:q_baca/theme/palette.dart';
-import 'package:q_baca/pages/halamanUtama/profil/profil_controller.dart';
 
-class koleksi extends StatelessWidget {
-  const koleksi({super.key});
+class KoleksiPage extends StatelessWidget {
+  const KoleksiPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => ProfilController(),
-      // PERBAIKAN: Tidak ada lagi Scaffold di sini.
-      // Latar belakang akan otomatis mengikuti MainScreen.
-      child: const ProfilView(),
+      create: (_) => KoleksiController(),
+      child: Scaffold(
+        backgroundColor: Palette.colorPrimary,
+        appBar: AppBar(
+          title: const Text('Koleksi Saya'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+        ),
+        body: Consumer<KoleksiController>(
+          builder: (context, controller, child) {
+            if (controller.isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            return Column(
+              children: [
+                _buildTabs(context, controller),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: IndexedStack(
+                    index: controller.selectedTabIndex,
+                    children: [
+                      _buildBookGrid(
+                        context,
+                        controller.purchasedBooks,
+                        "Anda belum membeli buku apapun.",
+                      ),
+                      _buildBookGrid(
+                        context,
+                        controller.favoriteBooks,
+                        "Anda belum memfavoritkan buku apapun.",
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabs(BuildContext context, KoleksiController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: _TabButton(
+              text: 'Buku Saya',
+              isSelected: controller.selectedTabIndex == 0,
+              onPressed: () => controller.changeTab(0),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _TabButton(
+              text: 'Favorit',
+              isSelected: controller.selectedTabIndex == 1,
+              onPressed: () => controller.changeTab(1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookGrid(
+    BuildContext context,
+    List<Book> books,
+    String emptyMessage,
+  ) {
+    if (books.isEmpty) {
+      return Center(child: Text(emptyMessage));
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        childAspectRatio: 0.6,
+      ),
+      itemCount: books.length,
+      itemBuilder: (context, index) {
+        final book = books[index];
+        return InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => BookDetailPage(bookId: book.id),
+              ),
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    imageUrl: book.coverUrl,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                book.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(
+                book.author,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
 
-class ProfilView extends StatelessWidget {
-  const ProfilView({super.key});
+// Widget private untuk tombol tab agar lebih rapi
+class _TabButton extends StatelessWidget {
+  final String text;
+  final bool isSelected;
+  final VoidCallback onPressed;
+
+  const _TabButton({
+    required this.text,
+    required this.isSelected,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<ProfilController>();
-
-    // Widget ini sekarang hanya mengembalikan kontennya saja.
-    return SafeArea(
-      child: controller.isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Palette.hijauButton),
-            )
-          : controller.errorMessage != null
-          ? Center(
-              child: Text(
-                controller.errorMessage!,
-                style: const TextStyle(color: Colors.red),
-              ),
-            )
-          : _buildProfileContent(context, controller),
-    );
-  }
-
-  // ... (fungsi _buildProfileContent dan _buildProfileMenuItem tetap sama) ...
-  Widget _buildProfileContent(
-    BuildContext context,
-    ProfilController controller,
-  ) {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          color: const Color(0xFFCDE5C1),
-          padding: const EdgeInsets.symmetric(vertical: 32.0),
-          child: Column(
-            children: [
-              const CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.white70,
-                child: Icon(Icons.person, size: 60, color: Palette.hijauButton),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                controller.user?.name ?? 'Nama Pengguna',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Palette.hijauButton,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                controller.user?.email ?? 'email@contoh.com',
-                style: const TextStyle(fontSize: 14, color: Colors.black54),
-              ),
-            ],
-          ),
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isSelected ? Palette.hijauButton : Colors.white,
+        foregroundColor: isSelected ? Colors.white : Palette.hijauButton,
+        side: BorderSide(
+          color: isSelected ? Colors.transparent : Palette.hijauButton,
         ),
-        const Divider(height: 1, color: Colors.blue, thickness: 2),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.only(top: 8.0),
-            children: [
-              _buildProfileMenuItem(
-                icon: Icons.person_outline,
-                text: 'Akun',
-                onTap: () {},
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.lock_outline,
-                text: 'Ubah Kata Sandi',
-                onTap: () {},
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.headset_mic_outlined,
-                text: 'Bantuan',
-                onTap: () {},
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.receipt_long_outlined,
-                text: 'Transaksi',
-                onTap: () {},
-              ),
-              _buildProfileMenuItem(
-                icon: Icons.logout,
-                text: 'Keluar',
-                onTap: () async {
-                  await controller.logout(context);
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProfileMenuItem({
-    required IconData icon,
-    required String text,
-    required VoidCallback onTap,
-  }) {
-    return Column(
-      children: [
-        ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 24.0,
-            vertical: 4.0,
-          ),
-          leading: Icon(icon, color: Palette.hijauButton),
-          title: Text(text, style: const TextStyle(fontSize: 16)),
-          trailing: const Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-            color: Colors.grey,
-          ),
-          onTap: onTap,
-        ),
-        const Divider(height: 1, indent: 24, endIndent: 24),
-      ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+      ),
+      child: Text(text),
     );
   }
 }

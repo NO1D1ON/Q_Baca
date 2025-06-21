@@ -151,11 +151,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 padding: (width <= 550)
                                     ? const EdgeInsets.symmetric(
                                         horizontal: 100,
-                                        vertical: 20,
+                                        vertical: 16,
                                       )
                                     : EdgeInsets.symmetric(
                                         horizontal: width * 0.2,
-                                        vertical: 25,
+                                        vertical: 20,
                                       ),
                                 textStyle: TextStyle(
                                   fontSize: (width <= 550) ? 13 : 17,
@@ -210,7 +210,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                           )
                                         : const EdgeInsets.symmetric(
                                             horizontal: 30,
-                                            vertical: 25,
+                                            vertical: 20,
                                           ),
                                     textStyle: TextStyle(
                                       fontSize: (width <= 550) ? 13 : 17,

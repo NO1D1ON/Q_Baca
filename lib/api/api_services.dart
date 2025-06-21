@@ -234,4 +234,14 @@ class ApiService {
       throw e.response?.data['message'] ?? 'Terjadi kesalahan.';
     }
   }
+
+  Future<Map<String, dynamic>> toggleFavorite(int bookId) async {
+    try {
+      // Panggil endpoint yang sudah kita buat di Laravel
+      final response = await dio.post('/books/$bookId/toggle-favorite');
+      return response.data;
+    } on DioException catch (e) {
+      throw e.response?.data['message'] ?? 'Terjadi kesalahan.';
+    }
+  }
 }

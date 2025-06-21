@@ -8,7 +8,6 @@ import 'package:q_baca/pages/halamanUtama/book_reader_page.dart';
 import 'package:q_baca/theme/palette.dart'; // <-- Import halaman baru
 import 'package:q_baca/pages/halamanUtama/home_controller.dart'; // [PERBAIKAN] Tambahkan import HomeController
 import 'package:provider/provider.dart';
-import 'package:q_baca/models/users.dart';
 
 class BookDetailController extends ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -41,22 +40,35 @@ class BookDetailController extends ChangeNotifier {
   }
 
   // [FUNGSI BARU] Untuk tombol favorit
-  Future<void> toggleFavorite() async {
+  Future<void> toggleFavorite(BuildContext context) async {
     if (_book == null) return;
+
+    // Simpan state awal, untuk jaga-jaga jika API gagal
+    final originalFavoriteStatus = _book!.isFavorite;
 
     // 1. Update UI secara optimis untuk respons instan
     _book!.isFavorite = !_book!.isFavorite;
     notifyListeners();
 
     try {
-      // 2. Kirim permintaan ke API
-      // TODO: Buat fungsi toggleFavorite di ApiService Anda
-      // await _apiService.toggleFavorite(bookId);
+      // 2. Kirim permintaan ke API untuk menyimpan perubahan
+      await _apiService.toggleFavorite(bookId);
+
+      // 3. [PENTING] Jika berhasil, perbarui juga data di HomeController
+      // agar halaman Koleksi->Favorit ikut ter-update.
+      // Kita gunakan `read` karena kita tidak sedang me-rebuild widget ini.
+      context.read<HomeController>().refreshCollectionData();
     } catch (e) {
-      // 3. Jika gagal, kembalikan state UI ke semula
-      _book!.isFavorite = !_book!.isFavorite;
+      // 4. Jika gagal, kembalikan state UI ke semula
+      _book!.isFavorite = originalFavoriteStatus;
       notifyListeners();
-      // TODO: Tampilkan pesan error kepada pengguna
+
+      // Tampilkan pesan error
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 

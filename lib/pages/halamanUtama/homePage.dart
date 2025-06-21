@@ -328,84 +328,60 @@ class BookCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
+      // [PERBAIKAN UTAMA DAN SATU-SATUNYA YANG DIPERLUKAN]
       onTap: () {
+        // 1. Ambil HomeController yang sudah ada dari context saat ini.
+        final homeController = context.read<HomeController>();
+
+        // 2. Lakukan navigasi seperti biasa.
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => BookDetailPage(bookId: book.id),
+            builder: (newContext) {
+              // 3. Bungkus halaman tujuan (BookDetailPage) dengan Provider.value
+              //    untuk "mewariskan" HomeController yang sudah kita ambil.
+              return ChangeNotifierProvider.value(
+                value: homeController,
+                child: BookDetailPage(bookId: book.id),
+              );
+            },
           ),
         );
       },
-      child: Padding(
-        padding: const EdgeInsets.only(right: 16),
-        child: SizedBox(
-          width: 130,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: book.coverUrl.startsWith('assets/')
-                      ? Image.asset(
-                          book.coverUrl,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (context, error, stackTrace) {
-                            return ConsistentBookPlaceholder(book: book);
-                          },
-                        )
-                      : CachedNetworkImage(
-                          imageUrl: book.coverUrl,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          placeholder: (context, url) => const Center(
-                            child: CircularProgressIndicator(
-                              color: Palette.hijauButton,
-                              strokeWidth: 2.0,
-                            ),
-                          ),
-                          errorWidget: (context, url, error) {
-                            return ConsistentBookPlaceholder(book: book);
-                          },
-                        ),
+      child: Container(
+        width: 140,
+        margin: const EdgeInsets.only(right: 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8.0),
+                child: CachedNetworkImage(
+                  imageUrl: book.coverUrl,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  placeholder: (context, url) =>
+                      Container(color: Colors.grey[200]),
+                  errorWidget: (context, url, error) => const Icon(Icons.error),
                 ),
               ),
-
-              // --- PERUBAHAN UNTUK MENGATASI OVERFLOW ---
-              Container(
-                // 1. Tambah tinggi kontainer sedikit agar lebih aman
-                height: 68,
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Text(
-                      book.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        // 2. Atur jarak antar baris agar lebih padat dan dapat diprediksi
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      book.author,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-              // --- AKHIR PERUBAHAN ---
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              book.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            Text(
+              book.author,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
         ),
       ),
     );
@@ -452,23 +428,7 @@ class BerandaLoadingSkeleton extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            const SizedBox(height: 24),
-            Row(
-              children: List.generate(
-                3,
-                (_) => Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: Container(
-                    width: 80,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+
             const SizedBox(height: 24),
             ...List.generate(
               4,

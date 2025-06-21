@@ -65,7 +65,7 @@ class BookDetailPage extends StatelessWidget {
                 book.isFavorite ? Icons.favorite : Icons.favorite_border,
                 color: Colors.red,
               ),
-              onPressed: () => controller.toggleFavorite(),
+              onPressed: () => controller.toggleFavorite(context),
             ),
           ],
           flexibleSpace: FlexibleSpaceBar(

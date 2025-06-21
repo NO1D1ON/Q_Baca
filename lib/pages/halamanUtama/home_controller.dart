@@ -21,11 +21,13 @@ class HomeController extends ChangeNotifier {
   List<Book> _trendingBooks = [];
   List<Category> _categories = [];
   List<NotificationModel> _notifications = [];
-  bool _hasUnreadNotifications = false;
+  bool _hasUnreadNotifications = true;
   String? _errorMessage;
   bool _isSearching = false;
   SearchResult? _searchResult;
   String? _searchError;
+  List<Book> _myBooks = [];
+  List<Book> _favoriteBooks = [];
 
   // ... (semua getter Anda sudah benar)
   bool get isLoading => _isLoading;
@@ -43,6 +45,8 @@ class HomeController extends ChangeNotifier {
   SearchResult? get searchResult => _searchResult;
   String? get searchError => _searchError;
   User? get user => _user;
+  List<Book> get myBooks => _myBooks;
+  List<Book> get favoriteBooks => _favoriteBooks;
 
   HomeController() {
     fetchHomePageData();
@@ -69,7 +73,9 @@ class HomeController extends ChangeNotifier {
         _apiService.fetchBooks('new'), // Indeks 2
         _apiService.fetchBooks('trending'), // Indeks 3
         _apiService.fetchCategories(), // Indeks 4
-        _apiService.fetchNotifications(), // Indeks 5
+        _apiService.fetchNotifications(),
+        _apiService.fetchMyBooks(),
+        _apiService.fetchMyFavorites(), // Indeks 5
       ]);
 
       // [SINKRONISASI] Ambil 6 hasil sesuai indeksnya
@@ -80,6 +86,8 @@ class HomeController extends ChangeNotifier {
       _categories = publicDataResults[4] as List<Category>;
       // [PERBAIKAN #2] Gunakan indeks yang benar (5) untuk notifikasi
       _notifications = publicDataResults[5] as List<NotificationModel>;
+      _myBooks = publicDataResults[6] as List<Book>;
+      _favoriteBooks = publicDataResults[7] as List<Book>;
 
       _hasUnreadNotifications = _notifications.any((notif) => !notif.isRead);
     } catch (e, stackTrace) {
@@ -90,6 +98,22 @@ class HomeController extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> refreshCollectionData() async {
+    try {
+      final results = await Future.wait([
+        _apiService.fetchMyBooks(),
+        _apiService.fetchMyFavorites(),
+      ]);
+      _myBooks = results[0];
+      _favoriteBooks = results[1];
+      // Panggil notifyListeners agar halaman Koleksi diperbarui jika sedang dibuka
+      notifyListeners();
+    } catch (e) {
+      // Tidak perlu menampilkan error besar, cukup cetak di konsol untuk debug
+      debugPrint("Gagal me-refresh data koleksi: $e");
     }
   }
 

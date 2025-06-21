@@ -21,9 +21,14 @@ class NotificationModel {
       title: json['title'] ?? 'Tanpa Judul',
       message: json['message'] ?? '',
       type: json['type'] ?? 'info',
-      isRead: json['is_read'] ?? true,
+
+      // [PERBAIKAN] Jika 'is_read' null, anggap sebagai 'belum dibaca' (false).
+      // API Laravel mengirim 0 atau 1, yang akan di-cast dengan benar oleh Dart.
+      isRead: (json['is_read'] == 1 || json['is_read'] == true),
+
+      // [PENYEMPURNAAN] Parsing tanggal yang lebih aman
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
+          ? DateTime.tryParse(json['created_at']) ?? DateTime.now()
           : DateTime.now(),
     );
   }

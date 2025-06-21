@@ -7,6 +7,7 @@ class CategoryBooksController extends ChangeNotifier {
   final int categoryId;
 
   CategoryBooksController(this.categoryId) {
+    // Panggil fungsi untuk mengambil buku saat controller dibuat
     fetchBooks();
   }
 
@@ -22,10 +23,13 @@ class CategoryBooksController extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
+
     try {
+      // Panggil fungsi API yang sudah kita buat sebelumnya
       _books = await _apiService.fetchBooksByCategory(categoryId);
     } catch (e) {
       _errorMessage = "Gagal memuat daftar buku.";
+      debugPrint("Error di CategoryBooksController: $e");
     } finally {
       _isLoading = false;
       notifyListeners();

@@ -140,37 +140,6 @@ class ProfilPage extends StatelessWidget {
     );
   }
 
-  // Widget helper dipisahkan agar lebih rapi
-  // Widget _buildProfileHeader(User user) {
-  //   return Container(
-  //     width: double.infinity,
-  //     padding: const EdgeInsets.symmetric(vertical: 32.0),
-  //     child: Column(
-  //       children: [
-  //         const CircleAvatar(
-  //           radius: 50,
-  //           backgroundColor: Colors.white70,
-  //           child: Icon(Icons.person, size: 60, color: Palette.hijauButton),
-  //         ),
-  //         const SizedBox(height: 16),
-  //         Text(
-  //           user.name,
-  //           style: const TextStyle(
-  //             fontSize: 22,
-  //             fontWeight: FontWeight.bold,
-  //             color: Palette.hijauButton,
-  //           ),
-  //         ),
-  //         const SizedBox(height: 4),
-  //         Text(
-  //           user.email,
-  //           style: const TextStyle(fontSize: 14, color: Colors.black54),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-
   Widget _buildProfileHeader(User user) {
     return Container(
       width: double.infinity,
@@ -180,7 +149,7 @@ class ProfilPage extends StatelessWidget {
           const CircleAvatar(
             radius: 50,
             backgroundColor: Colors.white70,
-            child: Icon(Icons.person, size: 60, color: Palette.hijauButton),
+            child: Icon(Icons.person, size: 100, color: Palette.hijauButton),
           ),
           const SizedBox(height: 16),
           Text(

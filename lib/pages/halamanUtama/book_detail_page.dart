@@ -1,4 +1,4 @@
-// lib/pages/book_detail_page.dart (VERSI FINAL)
+// lib/pages/book_detail_page.dart (VERSI FINAL - IMPROVED UI)
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +7,7 @@ import 'package:q_baca/controllers/book_detail_controller.dart';
 import 'package:q_baca/models/books.dart';
 import 'package:q_baca/theme/palette.dart';
 import 'package:intl/intl.dart';
+import 'dart:ui'; // Untuk ImageFilter.blur
 
 class BookDetailPage extends StatelessWidget {
   final int bookId;
@@ -16,16 +17,46 @@ class BookDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => BookDetailController(bookId),
-      // [PERBAIKAN] Gunakan Consumer agar bisa mengakses controller di Scaffold
       child: Consumer<BookDetailController>(
         builder: (context, controller, child) {
           return Scaffold(
-            backgroundColor: Palette.colorPrimary,
-            body: _buildContent(
-              context,
-              controller,
-            ), // Kirim controller ke body
-            // [PERBAIKAN] Tambahkan tombol dinamis di bawah
+            backgroundColor: Colors.white,
+            extendBodyBehindAppBar: true, // Extend body behind app bar
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+              actions: [
+                if (controller.book != null)
+                  Container(
+                    margin: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        controller.book!.isFavorite
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: Colors.red,
+                      ),
+                      onPressed: () => controller.toggleFavorite(context),
+                    ),
+                  ),
+              ],
+            ),
+            body: _buildContent(context, controller),
             bottomNavigationBar: _buildBottomButton(context, controller),
           );
         },
@@ -45,109 +76,222 @@ class BookDetailPage extends StatelessWidget {
     }
 
     final book = controller.book!;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final coverHeight = screenHeight * 0.5; // 50% dari tinggi layar
 
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          expandedHeight: MediaQuery.of(context).size.height * 0.4,
-          pinned: true,
-          backgroundColor: Palette.colorPrimary,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.of(context).pop(),
-            // Pastikan warnanya kontras dengan background saat di-scroll
-            color: Palette.hijauButton,
-          ),
-          iconTheme: const IconThemeData(color: Palette.hijauButton),
-          actions: [
-            IconButton(
-              icon: Icon(
-                book.isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: Colors.red,
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Bagian Cover dengan Stack (Background blur + Cover asli)
+          _buildCoverSection(book, coverHeight),
+
+          // Bagian Detail Buku
+          _buildDetailSection(book),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoverSection(Book book, double coverHeight) {
+    return SizedBox(
+      height: coverHeight,
+      child: Stack(
+        children: [
+          // Background blur layer (lapisan paling bawah)
+          Positioned.fill(
+            child: CachedNetworkImage(
+              imageUrl: book.coverUrl,
+              fit: BoxFit.cover,
+              imageBuilder: (context, imageProvider) => Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: imageProvider,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    color: Colors.black.withOpacity(0.3), // Overlay gelap
+                  ),
+                ),
               ),
-              onPressed: () => controller.toggleFavorite(context),
-            ),
-          ],
-          flexibleSpace: FlexibleSpaceBar(
-            background: Padding(
-              padding: const EdgeInsets.fromLTRB(40, 80, 40, 20),
-              child: CachedNetworkImage(
-                imageUrl: book.coverUrl,
-                fit: BoxFit.contain,
+              placeholder: (context, url) => Container(
+                color: Colors.grey[300],
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+              errorWidget: (context, url, error) => Container(
+                color: Colors.grey[300],
+                child: const Icon(Icons.error),
               ),
             ),
           ),
+
+          // Cover buku asli (lapisan atas)
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 30), // Margin untuk app bar
+              height: coverHeight * 0.8, // 70% dari tinggi section
+              child: AspectRatio(
+                aspectRatio: 3 / 4, // Rasio standar buku
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CachedNetworkImage(
+                      imageUrl: book.coverUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[300],
+                        child: const Center(child: CircularProgressIndicator()),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.error),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailSection(Book book) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Palette.colorPrimary,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
         ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Judul Buku
+            Center(
+              child: Text(
+                book.title,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Penulis
+            Center(
+              child: Text(
+                book.author,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Harga dan Rating
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  book.title,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                // Harga
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  book.author,
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  NumberFormat.currency(
-                    locale: 'id',
-                    symbol: 'Rp ',
-                    decimalDigits: 0,
-                  ).format(book.price),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    color: Palette.hijauButton,
-                    fontWeight: FontWeight.bold,
+                  decoration: BoxDecoration(
+                    color: Palette.hijauButton.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    NumberFormat.currency(
+                      locale: 'id',
+                      symbol: 'Rp ',
+                      decimalDigits: 0,
+                    ).format(book.price),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      color: Palette.hijauButton,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                _buildInfoRow(book),
-                const Divider(height: 32),
-                const Text(
-                  'Deskripsi',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+
+                // Rating
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star, color: Colors.amber, size: 20),
+                      const SizedBox(width: 4),
+                      Text(
+                        "${book.rating}",
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  book.description,
-                  textAlign: TextAlign.justify,
-                  style: const TextStyle(height: 1.5, color: Colors.black54),
-                ),
-                const SizedBox(
-                  height: 80,
-                ), // Beri ruang agar tidak tertutup tombol
               ],
             ),
-          ),
+            const SizedBox(height: 32),
+
+            // Deskripsi
+            const Text(
+              'Deskripsi',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              book.description,
+              textAlign: TextAlign.justify,
+              style: const TextStyle(
+                height: 1.6,
+                color: Colors.black54,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 100), // Ruang untuk bottom button
+          ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildInfoRow(Book book) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [_infoChip("Rating", "${book.rating}")],
-    );
-  }
-
-  Widget _infoChip(String label, String value) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-      ],
+      ),
     );
   }
 
@@ -155,22 +299,31 @@ class BookDetailPage extends StatelessWidget {
     BuildContext context,
     BookDetailController controller,
   ) {
-    if (controller.book == null)
-      return null; // Hanya cek buku, biarkan loading di tombol
+    if (controller.book == null) return null;
 
     final book = controller.book!;
 
-    return Padding(
+    return Container(
       padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Palette.colorPrimary,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: Palette.hijauButton,
-          minimumSize: const Size(double.infinity, 50),
+          minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
+          elevation: 0,
         ),
-        // Nonaktifkan tombol saat loading
         onPressed: controller.isLoading
             ? null
             : () {
@@ -192,9 +345,9 @@ class BookDetailPage extends StatelessWidget {
             : Text(
                 book.isPurchased ? 'Baca Buku' : 'Beli Sekarang',
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 18,
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
       ),
@@ -216,6 +369,9 @@ class BookDetailPage extends StatelessWidget {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text('Konfirmasi Pembelian'),
           content: Text(
             'Anda akan membeli "${book.title}" seharga ${currencyFormatter.format(book.price)}. Lanjutkan?',
@@ -224,20 +380,19 @@ class BookDetailPage extends StatelessWidget {
             TextButton(
               child: const Text('Batal'),
               onPressed: () {
-                // Tutup hanya dialog
                 Navigator.of(dialogContext).pop();
               },
             ),
-            // Gunakan FilledButton agar terlihat sebagai aksi utama
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: Palette.hijauButton,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: const Text('Ya, Beli'),
               onPressed: () {
-                // Tutup dialog terlebih dahulu
                 Navigator.of(dialogContext).pop();
-                // Kemudian jalankan fungsi pembelian
                 controller.buyBook(context);
               },
             ),

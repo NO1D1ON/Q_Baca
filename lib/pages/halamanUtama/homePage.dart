@@ -350,7 +350,7 @@ class BookCard extends StatelessWidget {
         );
       },
       child: Container(
-        width: 140,
+        width: 125,
         margin: const EdgeInsets.only(right: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

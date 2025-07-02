@@ -126,10 +126,17 @@ class ProfilPage extends StatelessWidget {
                         TextButton(
                           child: const Text('Batal'),
                           onPressed: () => Navigator.of(context).pop(),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red,
+                          ),
                         ),
                         FilledButton(
                           child: const Text('Kirim'),
                           onPressed: () => controller.submitTopUp(context),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Color(0xFF28738B),
+                          ),
                         ),
                       ],
               );

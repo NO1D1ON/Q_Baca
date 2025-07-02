@@ -35,7 +35,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (isLoggedIn) {
       // Jika token ada (sudah login), arahkan ke MainScreen
-      _redirectToHome();
+      _redirectToOnboarding();
     } else {
       // Jika token tidak ada, arahkan ke Onboarding/Login
       _redirectToOnboarding();

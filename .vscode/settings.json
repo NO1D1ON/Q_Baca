@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "D:/Kuliah/PraktikumAppMobile/AplikasiQBaca/q_baca/windows/flutter"
+    "cmake.sourceDirectory": "D:/Kuliah/PraktikumAppMobile/AplikasiQBaca/q_baca/windows/flutter",
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

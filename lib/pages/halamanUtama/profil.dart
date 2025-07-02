@@ -7,6 +7,7 @@ import 'package:q_baca/controllers/topUp_controller.dart';
 import 'package:q_baca/models/users.dart';
 import 'package:q_baca/pages/halamanUtama/home_controller.dart'; // <-- Gunakan HomeController
 import 'package:q_baca/pages/halamanUtama/account_page.dart'; // <-- Import halaman baru
+import 'package:q_baca/pages/transaction_history/transaction_history_page.dart';
 import 'package:q_baca/theme/palette.dart';
 import 'package:intl/intl.dart';
 
@@ -73,7 +74,13 @@ class ProfilPage extends StatelessWidget {
                     icon: Icons.history,
                     text: 'Riwayat Transaksi',
                     onTap: () {
-                      /* TODO: Navigasi ke halaman riwayat transaksi */
+                      // [MODIFIKASI] Navigasi ke halaman riwayat transaksi
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TransactionHistoryPage(),
+                        ),
+                      );
                     },
                   ),
                   _buildProfileMenuItem(

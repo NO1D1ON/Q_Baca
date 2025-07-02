@@ -13,6 +13,7 @@ import 'package:q_baca/pages/halamanUtama/kategoriLagi/category.dart'; // Menggu
 
 import 'package:q_baca/api/auth_service.dart';
 import 'package:q_baca/models/search_result.dart';
+import 'package:q_baca/models/transaction_model.dart';
 
 class ApiService {
   final Dio dio = Dio();
@@ -242,6 +243,21 @@ class ApiService {
       return response.data;
     } on DioException catch (e) {
       throw e.response?.data['message'] ?? 'Terjadi kesalahan.';
+    }
+  }
+
+  Future<List<Transaction>> fetchTransactionHistory() async {
+    try {
+      final response = await dio.get(
+        '/transactions',
+      ); // Sesuaikan dengan endpoint API Anda
+      return _parseObjectList<Transaction>(
+        responseData: response.data,
+        builder: (json) => Transaction.fromJson(json),
+      );
+    } on DioException {
+      // Jika gagal, kembalikan list kosong agar tidak crash.
+      return [];
     }
   }
 }

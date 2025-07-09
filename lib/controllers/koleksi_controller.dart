@@ -1,8 +1,8 @@
 // lib/controllers/koleksi_controller.dart
 
 import 'package:flutter/foundation.dart';
-import 'package:q_baca/api/api_services.dart';
-import 'package:q_baca/models/books.dart';
+import 'package:q_baca/core/api_services.dart';
+import 'package:q_baca/models/books_model.dart';
 
 class KoleksiController extends ChangeNotifier {
   final ApiService _apiService = ApiService();

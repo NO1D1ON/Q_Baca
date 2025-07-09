@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 // Ganti dengan path yang benar
-import 'package:q_baca/api/api_services.dart';
-import 'package:q_baca/api/auth_service.dart';
-import 'package:q_baca/models/users.dart';
+import 'package:q_baca/core/api_services.dart';
+import 'package:q_baca/core/auth_service.dart';
+import 'package:q_baca/models/users_model.dart';
 
 class ProfilController extends ChangeNotifier {
   final ApiService _apiService = ApiService();

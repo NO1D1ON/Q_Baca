@@ -2,13 +2,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:q_baca/pages/halamanUtama/home_controller.dart';
+import 'package:q_baca/pages/halamanUtama/beranda/home_controller.dart';
 // Ganti dengan path file Anda yang sebenarnya
-import 'package:q_baca/pages/halamanUtama/homePage.dart';
-import 'package:q_baca/pages/halamanUtama/bottomNavBar.dart';
-import 'package:q_baca/pages/halamanUtama/kategori.dart';
-import 'package:q_baca/pages/halamanUtama/koleksi.dart';
-import 'package:q_baca/pages/halamanUtama/profil.dart';
+import 'package:q_baca/pages/halamanUtama/beranda/homePage.dart';
+import 'package:q_baca/core/bottomNavBar.dart';
+import 'package:q_baca/pages/halamanUtama/kategori_buku/kategori.dart';
+import 'package:q_baca/pages/halamanUtama/koleksi/koleksi.dart';
+import 'package:q_baca/pages/halamanUtama/profil/profil.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});

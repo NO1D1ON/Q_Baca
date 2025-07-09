@@ -2,11 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:q_baca/api/api_services.dart';
-import 'package:q_baca/models/books.dart';
-import 'package:q_baca/pages/halamanUtama/book_reader_page.dart';
-import 'package:q_baca/theme/palette.dart'; // <-- Import halaman baru
-import 'package:q_baca/pages/halamanUtama/home_controller.dart'; // [PERBAIKAN] Tambahkan import HomeController
+import 'package:q_baca/core/api_services.dart';
+import 'package:q_baca/models/books_model.dart';
+import 'package:q_baca/pages/halamanUtama/buku/book_reader_page.dart';
+import 'package:q_baca/core/palette.dart'; // <-- Import halaman baru
+import 'package:q_baca/pages/halamanUtama/beranda/home_controller.dart'; // [PERBAIKAN] Tambahkan import HomeController
 import 'package:provider/provider.dart';
 
 class BookDetailController extends ChangeNotifier {

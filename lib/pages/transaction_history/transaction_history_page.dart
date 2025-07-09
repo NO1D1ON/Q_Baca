@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:q_baca/models/transaction_model.dart';
-import 'package:q_baca/pages/halamanUtama/kategoriLagi/transaction_controller.dart';
-import 'package:q_baca/theme/palette.dart';
+import 'package:q_baca/pages/transaction_history/transaction_controller.dart';
+import 'package:q_baca/core/palette.dart';
+import 'package:q_baca/pages/transaction_history/transaction_tile.dart'; // <-- Import widget baru
+import 'package:collection/collection.dart'; // <-- Tambahkan import ini untuk groupBy
 
 class TransactionHistoryPage extends StatelessWidget {
   const TransactionHistoryPage({super.key});
@@ -12,11 +13,17 @@ class TransactionHistoryPage extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => TransactionHistoryController(),
       child: Scaffold(
-        backgroundColor: Palette.colorPrimary,
+        backgroundColor: Palette.colorPrimary, // Warna latar belakang utama
         appBar: AppBar(
-          title: const Text('Riwayat Transaksi'),
-          backgroundColor: Palette.colorPrimary,
+          title: const Text(
+            'Riwayat Transaksi',
+            style: TextStyle(color: Colors.black87),
+          ),
+          backgroundColor: Colors.transparent, // AppBar transparan
           elevation: 0,
+          iconTheme: const IconThemeData(
+            color: Colors.black87,
+          ), // Warna ikon back
         ),
         body: Consumer<TransactionHistoryController>(
           builder: (context, controller, child) {
@@ -29,14 +36,58 @@ class TransactionHistoryPage extends StatelessWidget {
             }
 
             if (controller.transactions.isEmpty) {
-              return const Center(child: Text('Belum ada transaksi.'));
+              return const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.history_toggle_off,
+                      size: 80,
+                      color: Colors.grey,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Belum Ada Transaksi',
+                      style: TextStyle(fontSize: 18, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              );
             }
 
+            // Kelompokkan transaksi berdasarkan tanggal
+            final groupedTransactions = groupBy(
+              controller.transactions,
+              (transaction) =>
+                  transaction.relativeDateGroup, // Gunakan getter baru di model
+            );
+
             return ListView.builder(
-              itemCount: controller.transactions.length,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              // Jumlah item adalah jumlah grup tanggal + jumlah transaksi
+              itemCount:
+                  groupedTransactions.length + controller.transactions.length,
               itemBuilder: (context, index) {
-                final transaction = controller.transactions[index];
-                return _buildTransactionTile(transaction);
+                // Logika untuk menampilkan header tanggal atau item transaksi
+                int itemIndex = 0;
+                for (var entry in groupedTransactions.entries) {
+                  final groupTitle = entry.key;
+                  final groupItems = entry.value;
+
+                  // Jika index adalah awal dari grup baru
+                  if (index == itemIndex) {
+                    return _buildDateHeader(groupTitle);
+                  }
+                  itemIndex++;
+
+                  // Jika index berada dalam jangkauan item grup ini
+                  if (index < itemIndex + groupItems.length) {
+                    final transaction = groupItems[index - itemIndex];
+                    return TransactionTile(transaction: transaction);
+                  }
+                  itemIndex += groupItems.length;
+                }
+                return const SizedBox.shrink(); // Fallback
               },
             );
           },
@@ -45,32 +96,16 @@ class TransactionHistoryPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionTile(Transaction transaction) {
-    final isIncome = transaction.type == 'topup';
-    final iconData = isIncome ? Icons.arrow_downward : Icons.arrow_upward;
-    final color = isIncome ? Colors.green : Colors.red;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.1),
-          child: Icon(iconData, color: color, size: 20),
-        ),
-        title: Text(
-          transaction.title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(transaction.formattedDate),
-        trailing: Text(
-          transaction.formattedAmount,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-          ),
+  // Widget untuk menampilkan header tanggal
+  Widget _buildDateHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 24.0, right: 16, top: 20, bottom: 8),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Colors.black54,
         ),
       ),
     );
